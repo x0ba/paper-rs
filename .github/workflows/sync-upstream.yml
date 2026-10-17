@@ -15,7 +15,7 @@ jobs:
     if: github.repository == 'x0ba/paper-rs'
     runs-on: ubuntu-latest
     steps:
-      - name: Fast-forward main from upstream
+      - name: Sync main from upstream
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -37,10 +37,6 @@ jobs:
 
           if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
             echo "pull_request dry check only; no write was performed."
-            if [ "${status}" = "diverged" ]; then
-              echo "::error::Fork main has diverged from upstream (${parent}). Fast-forward only; this workflow will not force-push or overwrite fork commits. Resolve the divergence manually."
-              exit 1
-            fi
             exit 0
           fi
 
@@ -50,14 +46,10 @@ jobs:
               exit 0
               ;;
             ahead)
-              echo "Fork main is ahead of ${parent}; nothing to fast-forward."
+              echo "Fork main is ahead of ${parent}; nothing to merge from upstream."
               exit 0
               ;;
-            behind)
-              ;;
-            diverged)
-              echo "::error::Fork main has diverged from upstream (${parent}). Fast-forward only; this workflow will not force-push or overwrite fork commits. Resolve the divergence manually."
-              exit 1
+            behind|diverged)
               ;;
             *)
               echo "::error::Unexpected compare status '${status}' (ahead=${ahead} behind=${behind})."
@@ -76,25 +68,29 @@ jobs:
 
           if [ "${ec}" -ne 0 ]; then
             case "${response}" in
-              *"HTTP 409"*|*"diverged"*|*"Diverged"*|*"conflict"*|*"Conflict"*)
-                echo "::error::merge-upstream reported a conflict or diverged branch. Fast-forward only; this workflow will not force-push or overwrite fork commits. Resolve the divergence manually."
+              *"HTTP 409"*|*"conflict"*|*"Conflict"*)
+                echo "::error::merge-upstream reported a conflict (HTTP 409). This workflow will not force-push or overwrite fork commits. Resolve the conflict manually."
                 ;;
               *)
-                echo "::error::merge-upstream failed. Fast-forward only; this workflow will not force-push or overwrite fork commits."
+                echo "::error::merge-upstream failed. This workflow will not force-push or overwrite fork commits."
                 ;;
             esac
             exit 1
           fi
 
           merge_type="$(printf '%s\n' "${response}" | jq -r '.merge_type // empty')"
-          if [ "${merge_type}" != "fast-forward" ] && [ "${merge_type}" != "none" ]; then
-            echo "::error::Expected a fast-forward from upstream; merge-upstream reported merge_type=${merge_type}."
-            exit 1
-          fi
+          case "${merge_type}" in
+            fast-forward|merge|none)
+              ;;
+            *)
+              echo "::error::Unexpected merge-upstream merge_type='${merge_type}'."
+              exit 1
+              ;;
+          esac
 
           echo "Synced main from ${parent} (merge_type=${merge_type})."
 
-          if [ "${merge_type}" = "fast-forward" ]; then
+          if [ "${merge_type}" != "none" ]; then
             echo "Dispatching Build macOS on main (GITHUB_TOKEN pushes do not trigger push workflows)."
             gh workflow run build-macos.yml --ref main
           fi
