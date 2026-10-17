@@ -1,0 +1,94 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.repository == 'x0ba/paper-rs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fast-forward main from upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          parent="$(gh api "repos/${GITHUB_REPOSITORY}" --jq '.parent.full_name // empty')"
+          if [ -z "${parent}" ]; then
+            echo "::error::${GITHUB_REPOSITORY} is not a fork; no upstream to sync."
+            exit 1
+          fi
+
+          compare_ref="${parent%%/*}:main...${GITHUB_REPOSITORY%%/*}:main"
+          tsv="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${compare_ref}" --jq '[.status, .ahead_by, .behind_by] | @tsv')"
+          IFS=$'\t' read -r status ahead behind <<<"${tsv}"
+
+          echo "GET /repos/${GITHUB_REPOSITORY}/compare/${compare_ref}"
+          echo "status=${status} ahead=${ahead} behind=${behind}"
+
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            echo "pull_request dry check only; no write was performed."
+            if [ "${status}" = "diverged" ]; then
+              echo "::error::Fork main has diverged from upstream (${parent}). Fast-forward only; this workflow will not force-push or overwrite fork commits. Resolve the divergence manually."
+              exit 1
+            fi
+            exit 0
+          fi
+
+          case "${status}" in
+            identical)
+              echo "Already up to date with ${parent}."
+              exit 0
+              ;;
+            ahead)
+              echo "Fork main is ahead of ${parent}; nothing to fast-forward."
+              exit 0
+              ;;
+            behind)
+              ;;
+            diverged)
+              echo "::error::Fork main has diverged from upstream (${parent}). Fast-forward only; this workflow will not force-push or overwrite fork commits. Resolve the divergence manually."
+              exit 1
+              ;;
+            *)
+              echo "::error::Unexpected compare status '${status}' (ahead=${ahead} behind=${behind})."
+              exit 1
+              ;;
+          esac
+
+          set +e
+          response="$(gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/merge-upstream" \
+            -f branch=main 2>&1)"
+          ec=$?
+          set -e
+          printf '%s\n' "${response}"
+
+          if [ "${ec}" -ne 0 ]; then
+            case "${response}" in
+              *"HTTP 409"*|*"diverged"*|*"Diverged"*|*"conflict"*|*"Conflict"*)
+                echo "::error::merge-upstream reported a conflict or diverged branch. Fast-forward only; this workflow will not force-push or overwrite fork commits. Resolve the divergence manually."
+                ;;
+              *)
+                echo "::error::merge-upstream failed. Fast-forward only; this workflow will not force-push or overwrite fork commits."
+                ;;
+            esac
+            exit 1
+          fi
+
+          merge_type="$(printf '%s\n' "${response}" | jq -r '.merge_type // empty')"
+          if [ "${merge_type}" != "fast-forward" ] && [ "${merge_type}" != "none" ]; then
+            echo "::error::Expected a fast-forward from upstream; merge-upstream reported merge_type=${merge_type}."
+            exit 1
+          fi
+
+          echo "Synced main from ${parent} (merge_type=${merge_type})."
