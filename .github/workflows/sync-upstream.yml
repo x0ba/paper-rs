@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   sync:
@@ -92,3 +93,8 @@ jobs:
           fi
 
           echo "Synced main from ${parent} (merge_type=${merge_type})."
+
+          if [ "${merge_type}" = "fast-forward" ]; then
+            echo "Dispatching Build macOS on main (GITHUB_TOKEN pushes do not trigger push workflows)."
+            gh workflow run build-macos.yml --ref main
+          fi

@@ -1,0 +1,113 @@
+name: Build macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: macos-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.repository == 'x0ba/paper-rs'
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Build release
+        run: cargo build --release --locked
+
+      - name: Package unsigned .app, zip, and .dmg
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)"
+          app="dist/paper-rs.app"
+          rm -rf dist
+          mkdir -p "${app}/Contents/MacOS"
+          cp target/release/paper-rs "${app}/Contents/MacOS/paper-rs"
+          cp target/release/paper-rs-mcp "${app}/Contents/MacOS/paper-rs-mcp"
+          chmod +x "${app}/Contents/MacOS/paper-rs" "${app}/Contents/MacOS/paper-rs-mcp"
+          printf 'APPL????' > "${app}/Contents/PkgInfo"
+          cat > "${app}/Contents/Info.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>en</string>
+            <key>CFBundleDisplayName</key>
+            <string>paper-rs</string>
+            <key>CFBundleExecutable</key>
+            <string>paper-rs</string>
+            <key>CFBundleIdentifier</key>
+            <string>rs.paper.app</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>paper-rs</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>${version}</string>
+            <key>CFBundleSupportedPlatforms</key>
+            <array>
+              <string>MacOSX</string>
+            </array>
+            <key>CFBundleVersion</key>
+            <string>${version}</string>
+            <key>LSApplicationCategoryType</key>
+            <string>public.app-category.graphics-design</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>11.0</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+          plutil -lint "${app}/Contents/Info.plist"
+          file "${app}/Contents/MacOS/paper-rs" "${app}/Contents/MacOS/paper-rs-mcp"
+          ditto -c -k --keepParent "${app}" dist/paper-rs-macos.app.zip
+          hdiutil create -volname paper-rs -srcfolder "${app}" -ov -format UDZO dist/paper-rs-macos.dmg
+          ls -lh dist/paper-rs-macos.app.zip dist/paper-rs-macos.dmg
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: paper-rs-macos
+          path: |
+            dist/paper-rs-macos.app.zip
+            dist/paper-rs-macos.dmg
+          if-no-files-found: error
+
+      - name: Publish rolling macOS prerelease
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release delete macos-latest --yes --cleanup-tag || true
+          gh release create macos-latest \
+            --prerelease \
+            --latest=false \
+            --title "paper-rs macOS (latest)" \
+            --notes "Unsigned rolling build from ${GITHUB_SHA}. Gatekeeper will block it: right-click the app and choose Open, or run \`xattr -dr com.apple.quarantine\` on the .app." \
+            dist/paper-rs-macos.app.zip \
+            dist/paper-rs-macos.dmg
