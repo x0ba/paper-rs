@@ -52,6 +52,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Agent skills
+
+`.agents/skills/` holds instructions and helper scripts for coding agents, installed from
+[michaelshimeles/skills](https://github.com/michaelshimeles/skills). They are not part of the
+app. The ones vendored from other projects keep their license file in their folder:
+
+| Skill | From | License |
+|---|---|---|
+| `before-and-after` | [vercel-labs/before-and-after](https://github.com/vercel-labs/before-and-after), Copyright (c) 2026 James Clements | PolyForm Shield 1.0.0 |
+| `greploop`, `greploop-apps` | [greptileai/skills](https://github.com/greptileai/skills), Copyright (c) 2026 Greptile AI | MIT |
+| `unslop` | [cursor/plugins](https://github.com/cursor/plugins/tree/main/pstack/skills/unslop), Copyright (c) 2026 Lauren Tan | MIT |
+
 ## Fonts
 
 Inter 4.1 by Rasmus Andersson — SIL Open Font License 1.1 (`assets/fonts/OFL.txt`). Regular,

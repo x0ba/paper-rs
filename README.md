@@ -337,9 +337,12 @@ src/mcp/           MCP server (rmcp): tools, HTML/CSS mapping, HTTP service
 src/bin/paper-rs-mcp.rs  stdio bridge to the running app
 analysis/          reverse-engineering findings and design (raw dumps are gitignored)
 docs/screenshots/  headless renders produced by `cargo test`
+site/              the download page (SvelteKit on Vercel); see site/README.md
+AGENTS.md          workflow for coding agents; its skills live in .agents/skills/
 ```
 
 ## License
 
 MIT OR Apache-2.0 for the code in this repository. Inter (Regular, Medium, SemiBold) is
 © The Inter Project Authors under the SIL Open Font License 1.1; see `assets/fonts/OFL.txt`.
+The agent skills in `.agents/skills/` keep their own licenses; see `THIRD_PARTY.md`.
