@@ -22,7 +22,8 @@ npm run preview   # serves the build, including /download
 ## Copy and version
 
 - Headline, features and footer: `src/routes/+page.svelte`
-- Version, title, description and URLs: `src/lib/site.ts`. Bump `VERSION` when a release ships.
+- Version, name, title, description and URLs: `src/lib/site.ts`. Bump `VERSION` when a release ships.
+- `static/robots.txt` and `static/sitemap.xml` repeat the site URL; update them if `SITE_URL` changes.
 
 ## Images
 
@@ -50,5 +51,5 @@ framework preset is SvelteKit and needs no other settings. Vercel builds every p
 repository, including commits that only touch the app, unless the project has an Ignored Build
 Step.
 
-Vercel sets `VERCEL_PROJECT_PRODUCTION_URL` during builds, which gives the canonical URL and the
-social card absolute URLs. Without it they point at `https://paper-rs.vercel.app`.
+The canonical URL and the social card URLs come from `SITE_URL` in `src/lib/site.ts`, so every
+deployment, previews included, points them at the production domain.

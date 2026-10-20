@@ -8,8 +8,6 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
-
-	const __SITE_URL__: string;
 }
 
 export {};

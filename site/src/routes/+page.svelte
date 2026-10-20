@@ -1,6 +1,15 @@
 <script lang="ts">
 	import ThemeToggle from '#lib/ThemeToggle.svelte';
-	import { DESCRIPTION, REPO_URL, SITE_URL, TITLE, VERSION } from '#lib/site.js';
+	import {
+		DESCRIPTION,
+		JSON_LD,
+		NAME,
+		OG_IMAGE,
+		REPO_URL,
+		SITE_URL,
+		TITLE,
+		VERSION
+	} from '#lib/site.js';
 
 	const sizes = '(min-width: 1080px) 1032px, calc(100vw - 48px)';
 	const srcset = (theme: string, ext: string) =>
@@ -8,15 +17,14 @@
 	const shots = [
 		{
 			theme: 'light',
-			alt: 'paper-rs in light mode: a phone screen design with its button selected, next to a hand-drawn flow chart and sticky notes'
+			alt: `${NAME} in light mode: a phone screen design with its button selected, next to a hand-drawn flow chart and sticky notes`
 		},
 		{
 			theme: 'dark',
-			alt: 'paper-rs in dark mode: the same board with dark sidebars around the canvas'
+			alt: `${NAME} in dark mode: the same board with dark sidebars around the canvas`
 		}
 	];
-	const ogImage = `${SITE_URL}/og.jpg`;
-	const ogAlt = 'paper-rs: Sketch it, then design it.';
+	const ogAlt = `The ${NAME} icon and the words "Sketch it, then design it." beside a screenshot of the app with a phone screen design, sticky notes and a hand-drawn flow chart`;
 </script>
 
 <svelte:head>
@@ -25,25 +33,29 @@
 	<link rel="canonical" href="{SITE_URL}/" />
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="{SITE_URL}/" />
-	<meta property="og:site_name" content="paper-rs" />
+	<meta property="og:site_name" content={NAME} />
+	<meta property="og:locale" content="en_US" />
 	<meta property="og:title" content={TITLE} />
 	<meta property="og:description" content={DESCRIPTION} />
-	<meta property="og:image" content={ogImage} />
+	<meta property="og:image" content={OG_IMAGE} />
+	<meta property="og:image:type" content="image/jpeg" />
 	<meta property="og:image:width" content="1200" />
 	<meta property="og:image:height" content="630" />
 	<meta property="og:image:alt" content={ogAlt} />
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content={TITLE} />
 	<meta name="twitter:description" content={DESCRIPTION} />
-	<meta name="twitter:image" content={ogImage} />
+	<meta name="twitter:image" content={OG_IMAGE} />
 	<meta name="twitter:image:alt" content={ogAlt} />
+	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+	{@html JSON_LD}
 </svelte:head>
 
 <div class="wrap">
 	<main>
 		<section class="hero">
 			<ThemeToggle />
-			<img class="icon" src="/icon.webp" width="112" height="112" alt="paper-rs app icon" />
+			<img class="icon" src="/icon.webp" width="112" height="112" alt="{NAME} app icon" />
 			<h1>Sketch it, then design it.</h1>
 			<p class="lede">{DESCRIPTION}</p>
 			<a class="btn" href="/download" data-sveltekit-reload>
