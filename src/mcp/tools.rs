@@ -1,18 +1,18 @@
 //! Tool catalogue: names, descriptions and input schemas.
 //!
-//! Names and argument shapes follow Paper's MCP server where paper-rs has an equivalent
-//! (`analysis/paper-mcp.md` §2), so agent prompts written for Paper carry over. paper-rs
+//! Names and argument shapes follow Paper's MCP server where Sketch has an equivalent
+//! (`analysis/paper-mcp.md` §2), so agent prompts written for Paper carry over. Sketch
 //! additions: `create_shape` (whiteboard shapes and arrows), `select_nodes`, `undo`, `redo`.
 
 use serde_json::{Value, json};
 
 pub const INSTRUCTIONS: &str = "\
-paper-rs is a local design and whiteboard app with an infinite canvas. These tools read and \
+Sketch is a local design and whiteboard app with an infinite canvas. These tools read and \
 edit the project open in the running app; every change is one undo step and shows up live.
 
 - Start with get_basic_info (pages, artboards, sizes) and get_selection (what the user is \
 looking at). Use list_resources / open_file / create_file to pick a project.
-- For details read get_guide({ topic: \"paper-rs-mcp-instructions\" }) once per session.
+- For details read get_guide({ topic: \"sketch-rs-mcp-instructions\" }) once per session.
 - pageId defaults to the page the user is viewing; pass it to work on another page without \
 switching the user's view. Node ids are opaque strings; never show them to the user.
 - Build UI with create_artboard, then write_html into it, one visual group per call (a header, \
@@ -81,7 +81,7 @@ pub fn definitions() -> Vec<Value> {
         // ------------------------------------------------------------ projects and pages
         tool(
             "list_resources",
-            "Lists the user's paper-rs projects (local folders), most recently modified first. \
+            "Lists the user's Sketch projects (local folders), most recently modified first. \
              Each item has id, name, path, page count, updatedAt, and `open` for the project open \
              in the app.",
             json!({"limit": {"type": "integer", "description": "Maximum projects to return. Defaults to 50."}}),
@@ -229,7 +229,7 @@ pub fn definitions() -> Vec<Value> {
         ),
         tool(
             "get_font_family_info",
-            "Whether font families are available and their weights/styles. paper-rs renders text \
+            "Whether font families are available and their weights/styles. Sketch renders text \
              with Inter (400, 700, normal and italic); other families fall back to Inter.",
             json!({"familyNames": {"type": "array", "items": {"type": "string"}}}),
             &["familyNames"],
@@ -237,7 +237,7 @@ pub fn definitions() -> Vec<Value> {
         ),
         tool(
             "get_guide",
-            "Read a guide. Topics: \"paper-rs-mcp-instructions\" (read first), \"html\" (what \
+            "Read a guide. Topics: \"sketch-rs-mcp-instructions\" (read first), \"html\" (what \
              write_html supports), \"whiteboard\" (shapes, arrows, stickies, hand-drawn style).",
             json!({"topic": {"type": "string"}}),
             &["topic"],
@@ -314,7 +314,7 @@ pub fn definitions() -> Vec<Value> {
              fit-content).\n\
              - <img src> takes paper-asset:///abs/path, file:// URLs, absolute paths or data: URIs. \
              <svg> markup is imported as vector layers.\n\
-             - layer-name=\"...\" names layers; <x-paper-clone node-id=\"ID\" style=\"...\"/> \
+             - layer-name=\"...\" names layers; <x-sketch-clone node-id=\"ID\" style=\"...\"/> \
              clones an existing node.\n\
              Returns the ids of the created top-level layers and the styles that were ignored.",
             json!({
@@ -464,7 +464,7 @@ pub fn definitions() -> Vec<Value> {
 }
 
 pub const GUIDE_INSTRUCTIONS: &str = "\
-# Designing in paper-rs over MCP
+# Designing in Sketch over MCP
 
 1. Orient: get_basic_info → pages, artboards, sizes; get_selection → what the user points at.
 2. Plan a brief before a new design: palette (3–5 colors), type scale (e.g. 12/14/16/20/28/40),
@@ -495,7 +495,7 @@ pub const GUIDE_HTML: &str = "\
 Elements: div/section/header/footer/nav/main/article/aside/ul/ol/li/button/form → frames;
 p/h1–h6/span/label/a/strong/em/code/pre (elements holding only text) → text layers (with a
 frame around them when they have a background, border or padding); img → image rectangle;
-svg → vector layers; br → line break; x-paper-clone node-id=ID → copy of an existing layer.
+svg → vector layers; br → line break; x-sketch-clone node-id=ID → copy of an existing layer.
 
 Default sizes (like CSS): h1 32px bold, h2 24px bold, h3 20px bold, h4–h6 16px bold, p 16px,
 small 13px, code/pre 14px; color is inherited, default black.

@@ -1,6 +1,6 @@
-# Goal: MCP server for paper-rs
+# Goal: MCP server for Sketch
 
-Build an MCP server for paper-rs so AI agents can design on the paper-rs canvas the way Paper's own MCP server lets agents design in Paper.
+Build an MCP server for Sketch so AI agents can design on the Sketch canvas the way Paper's own MCP server lets agents design in Paper.
 
 ## 1. Study Paper's MCP server (behaviour only)
 - The original Paper app bundle is at ~/paper-target (app.asar, app.asar.unpacked), OUTSIDE the repo. NEVER copy/commit Paper's code or assets into the repo. Study for behaviour only; write all code independently.
@@ -10,8 +10,8 @@ Build an MCP server for paper-rs so AI agents can design on the paper-rs canvas 
   - how it reads and writes the canvas: selection, nodes, frames, styles, writing HTML/JSX-like content, screenshots/export
 - Record findings in analysis/paper-mcp.md (raw dumps go in analysis/raw/, which is gitignored).
 
-## 2. Build the equivalent for paper-rs (Rust)
-- Use e.g. the `rmcp` crate. Preferred: embedded in the app, serving local streamable HTTP, plus a stdio bridge binary (e.g. `paper-rs-mcp`) that proxies to the running app.
+## 2. Build the equivalent for Sketch (Rust)
+- Use e.g. the `rmcp` crate. Preferred: embedded in the app, serving local streamable HTTP, plus a stdio bridge binary (e.g. `sketch-rs-mcp`) that proxies to the running app.
 - Agents must be able to:
   - list projects and pages
   - read the document tree and current selection
@@ -24,7 +24,7 @@ Build an MCP server for paper-rs so AI agents can design on the paper-rs canvas 
 ## 3. Quality & process
 - Add tests (unit + an integration test driving the MCP server with a client).
 - Update README with setup for Claude Code and Codex (`claude mcp add ...`, `codex mcp add ...` examples, HTTP and stdio).
-- Commit as you go using Conventional Commits. Build output stays gitignored. CARGO_TARGET_DIR must stay OUTSIDE the synced tree (e.g. export CARGO_TARGET_DIR=~/.cache/paper-rs-target); the repo is Mutagen-synced to a Mac.
+- Commit as you go using Conventional Commits. Build output stays gitignored. CARGO_TARGET_DIR must stay OUTSIDE the synced tree (e.g. export CARGO_TARGET_DIR=~/.cache/sketch-rs-target); the repo is Mutagen-synced to a Mac.
 - Keep PROGRESS.md updated with milestones.
 - Must build and run on macOS (not just Linux).
 

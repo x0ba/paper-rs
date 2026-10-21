@@ -1,17 +1,17 @@
-//! Builds a sample project with paper-rs's own MCP tools on a headless session, then renders
-//! the full app UI (Mac layout, light and dark) through paper-rs's egui + wgpu frame code.
+//! Builds a sample project with sketch-rs's own MCP tools on a headless session, then renders
+//! the full app UI (Mac layout, light and dark) through sketch-rs's egui + wgpu frame code.
 //!
-//!   paper-rs-site-shots OUT_DIR
+//!   sketch-rs-site-shots OUT_DIR
 
-use paper_rs::editor::Editor;
-use paper_rs::geom::{Rect, V2, v2};
-use paper_rs::mcp::{Out, exec};
-use paper_rs::model::{Color, NodeId};
-use paper_rs::project::Store;
-use paper_rs::render::frame::{self, Painter};
-use paper_rs::render::gpu::{self, Headless};
-use paper_rs::ui::{self, UiState};
 use serde_json::{Value, json};
+use sketch_rs::editor::Editor;
+use sketch_rs::geom::{Rect, V2, v2};
+use sketch_rs::mcp::{Out, exec};
+use sketch_rs::model::{Color, NodeId};
+use sketch_rs::project::Store;
+use sketch_rs::render::frame::{self, Painter};
+use sketch_rs::render::gpu::{self, Headless};
+use sketch_rs::ui::{self, UiState};
 use std::path::{Path, PathBuf};
 
 const PROJECT: &str = "Trailhead";
@@ -183,7 +183,7 @@ fn build(root: &Path) -> (exec::SessionHost, NodeId) {
 
     // Freehand ink through the real pencil input path.
     let ed = &mut h.ed;
-    ed.camera = paper_rs::geom::Camera {
+    ed.camera = sketch_rs::geom::Camera {
         pan: v2(-40.0, -40.0),
         zoom: 1.0,
     };
@@ -196,7 +196,7 @@ fn build(root: &Path) -> (exec::SessionHost, NodeId) {
             )
         })
         .collect();
-    paper_rs::demo::sketch(ed, &loop_pts, 3.0, Color::rgb(0xe0, 0x4f, 0x5f));
+    sketch_rs::demo::sketch(ed, &loop_pts, 3.0, Color::rgb(0xe0, 0x4f, 0x5f));
 
     call(&mut h, "finish_working_on_nodes", json!({}));
     let button = node(&button);
@@ -257,7 +257,7 @@ fn frame_camera(ed: &mut Editor) {
 fn main() {
     let out = PathBuf::from(std::env::args().nth(1).unwrap_or_else(|| "out".into()));
     std::fs::create_dir_all(&out).unwrap();
-    let root = std::env::temp_dir().join(format!("paper-rs-site-shots-{}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("sketch-rs-site-shots-{}", std::process::id()));
     let (mut h, _button) = build(&root);
     let gpu = Headless::new().expect("no GPU adapter");
     println!("adapter: {}", gpu.adapter_info.name);

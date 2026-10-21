@@ -1,6 +1,6 @@
 //! System clipboard interop.
 //!
-//! Copying writes a `paper-rs/clipboard` JSON payload (layers, their world rects and the
+//! Copying writes a `sketch-rs/clipboard` JSON payload (layers, their world rects and the
 //! images they use) as text, so layers paste between windows, projects and app restarts.
 //! Pasting accepts that payload, Excalidraw clipboard/scene JSON, SVG markup, images and
 //! plain text (which becomes a text layer).
@@ -10,7 +10,9 @@ use crate::model::{Node, NodeId, Paint};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub const TYPE: &str = "paper-rs/clipboard";
+pub const TYPE: &str = "sketch-rs/clipboard";
+/// Copied by builds from before the rename from paper-rs; still pastes.
+pub const OLD_TYPE: &str = "paper-rs/clipboard";
 
 /// Platform clipboard access, injected into the editor (tests use an in-memory one).
 pub trait Provider {
@@ -124,7 +126,7 @@ pub fn decode(text: &str) -> Content {
     let t = text.trim_start();
     if t.starts_with('{') {
         if let Ok(p) = serde_json::from_str::<Payload>(t)
-            && p.kind == TYPE
+            && (p.kind == TYPE || p.kind == OLD_TYPE)
         {
             for (id, b64) in &p.assets {
                 if crate::assets::get(id).is_none()

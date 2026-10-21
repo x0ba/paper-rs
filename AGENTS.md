@@ -16,10 +16,11 @@ symlinks in `.claude/skills/`.
 
 ## This repo
 
-This repo is paper-rs, a native Rust infinite canvas built on wgpu, winit and
+This repo is Sketch, a native Rust infinite canvas built on wgpu, winit and
 egui, plus its download page in `site/`, a single prerendered SvelteKit page
 built for Vercel. The README covers building, running and testing the app, and
-`site/README.md` covers the page and its image pipeline.
+`site/README.md` covers the page and its image pipeline. The app used to be
+called paper-rs, and the GitHub repo and checkout folders keep that name.
 
 - Put worktrees in `../paper-rs-worktrees/<task-name>` on branches named
   `agent/<task-name>`. Outside the checkout, Cargo, Vite and svelte-check never
@@ -30,7 +31,7 @@ built for Vercel. The README covers building, running and testing the app, and
   ignores it.
 - Don't deploy to Vercel, create Vercel projects, publish GitHub releases or
   push tags. Micky decides when to ship.
-- paper-rs is a clean-room reimplementation modeled on Paper (paper.design).
+- Sketch is a clean-room reimplementation modeled on Paper (paper.design).
   Never add Paper's code, shaders, icons, fonts or assets; `analysis/` records
   behavior only. On the download page, keep Paper's name out of the headline,
   logo and assets, don't imply affiliation, and keep Figma's name out of the

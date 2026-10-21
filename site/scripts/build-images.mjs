@@ -1,7 +1,7 @@
-// Turns the raw captures and brand SVGs into the optimized files in static/.
+// Turns the brand SVGs and the app capture into the optimized files in static/.
 //
-//   npm run shots    renders scripts/screenshots/out/app-{light,dark}.png with paper-rs
-//   npm run images   this script
+//   npm run shots    renders scripts/screenshots/out/app-{light,dark}.png with Sketch
+//   npm run images   this script; the Open Graph card shows app-dark.png
 
 import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -18,27 +18,15 @@ const shots = at('scripts', 'screenshots', 'out');
 const chrome =
 	process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
-await mkdir(at('static', 'shots'), { recursive: true });
 await mkdir(build, { recursive: true });
 
-for (const theme of ['light', 'dark']) {
-	const src = path.join(shots, `app-${theme}.png`);
-	if (!existsSync(src)) throw new Error(`missing ${src}; run npm run shots first`);
-	for (const width of [2160, 1080]) {
-		const base = path.join(out, 'shots', `app-${theme}-${width}`);
-		const img = sharp(src).resize({ width, kernel: 'lanczos3' });
-		await img.clone().avif({ quality: 62, effort: 7, chromaSubsampling: '4:4:4' }).toFile(`${base}.avif`);
-		await img.clone().webp({ quality: 84, effort: 6, smartSubsample: true }).toFile(`${base}.webp`);
-	}
-}
+const capture = path.join(shots, 'app-dark.png');
+if (!existsSync(capture)) throw new Error(`missing ${capture}; run npm run shots first`);
 
 const iconSvg = await readFile(at('scripts', 'brand', 'icon.svg'));
 const smallSvg = await readFile(at('scripts', 'brand', 'icon-small.svg'));
-const icon = (size) => sharp(iconSvg, { density: (72 * size) / 1024 * 2 }).resize(size);
 const small = (size) => sharp(smallSvg, { density: (72 * size) / 64 * 4 }).resize(size);
 
-await icon(336).webp({ quality: 90, alphaQuality: 100, effort: 6 }).toFile(path.join(out, 'icon.webp'));
-await icon(512).png().toFile(path.join(build, 'icon-512.png'));
 await copyFile(at('scripts', 'brand', 'icon-small.svg'), path.join(out, 'favicon.svg'));
 
 // iOS masks the corners itself, so the touch icon is the face edge to edge.

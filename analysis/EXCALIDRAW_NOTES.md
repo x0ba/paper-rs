@@ -1,4 +1,4 @@
-# Excalidraw porting notes (for paper-rs)
+# Excalidraw porting notes (for Sketch)
 
 Source studied:
 
@@ -35,7 +35,7 @@ points-on-curve, points-on-path and path-data-parser `Copyright (c) 2020 Preet S
 `packages/fractional-indexing` is vendored CC0 (no attribution required, but credit it anyway).
 Excalidraw's freedraw uses `perfect-freehand@1.2.0` (MIT, Steve Ruiz). It is not studied here, only referenced.
 
-**Rule for paper-rs:** any code ported from these sources (algorithms transcribed line by line, constants tables,
+**Rule for Sketch:** any code ported from these sources (algorithms transcribed line by line, constants tables,
 the RNG, the hachure scanline, the A* router, and so on) must be credited in `THIRD_PARTY.md` with the project
 name, the copyright line above and the full MIT text. Also put a short `// Ported from <project> (<path>), MIT` comment
 at the top of each ported Rust module.
@@ -1054,7 +1054,7 @@ Look:
 - Shadow offset 3 at opacity 0.16, plus an edge shadow (width 0.5, opacity 0.08).
 - The note's stroke colour = the label colour ("ink").
 
-For paper-rs, model it as `Shape::StickyNote { base_height }` plus a bound `Text`. Reuse the bound-text layout from §7.3 with padding 16. Implement grow-to-fit by setting `h = max(baseHeight, textH + 52)`.
+For Sketch, model it as `Shape::StickyNote { base_height }` plus a bound `Text`. Reuse the bound-text layout from §7.3 with padding 16. Implement grow-to-fit by setting `h = max(baseHeight, textH + 52)`.
 
 For older files without stickynote, the equivalent is a rectangle (solid fill, yellow background, `roundness {type: 3}`) with bound text in `verticalAlign: middle` / `textAlign: center`.
 
@@ -1151,7 +1151,7 @@ Per-type rules (`restoreElement`, `:517-759`):
 
 ## 9. Fixtures written
 
-These are hand-authored for paper-rs (not copied from the repo) and checked to be valid JSON with internally consistent references.
+These are hand-authored for Sketch (not copied from the repo) and checked to be valid JSON with internally consistent references.
 
 `tests/fixtures/excalidraw/basic.excalidraw`, in array order (= z-order):
 

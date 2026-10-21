@@ -1,5 +1,5 @@
 {
-	"name": "paper-rs-site",
+	"name": "sketch-rs-site",
 	"private": true,
 	"version": "0.1.0",
 	"type": "module",
@@ -10,7 +10,7 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"shots": "CARGO_TARGET_DIR=\"${CARGO_TARGET_DIR:-$HOME/.cache/paper-rs-site-shots}\" cargo run --release --manifest-path scripts/screenshots/Cargo.toml -- scripts/screenshots/out",
+		"shots": "CARGO_TARGET_DIR=\"${CARGO_TARGET_DIR:-$HOME/.cache/sketch-rs-site-shots}\" cargo run --release --manifest-path scripts/screenshots/Cargo.toml -- scripts/screenshots/out",
 		"images": "node scripts/build-images.mjs"
 	},
 	"devDependencies": {
@@ -19,6 +19,7 @@
 		"@sveltejs/kit": "^3.0.0",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@types/node": "^22.20.5",
+		"roughjs": "^4.6.6",
 		"sharp": "^0.35.5",
 		"svelte": "^5.57.1",
 		"svelte-check": "^4.6.0",
@@ -28,7 +29,7 @@
 	"imports": {
 		"#lib/*": "./src/lib/*"
 	},
-	"description": "Download page for paper-rs, a native canvas for designing and sketching on the Mac",
+	"description": "Download page for Sketch, a native canvas for designing and sketching on the Mac",
 	"engines": {
 		"node": ">=22.17"
 	}

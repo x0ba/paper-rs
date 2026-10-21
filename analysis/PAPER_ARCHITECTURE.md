@@ -40,7 +40,7 @@ So the rendering engine, scene model, tools, undo, snapping and the file format 
 | MCP server | `src/mcp/server.ts`, `bridge.ts`, `mcp-body-schema.ts` (hono + `@modelcontextprotocol/sdk`) | The local MCP server forwards tool calls into the renderer through `webContents.executeJavaScript` on `window.mcpHandlers` (`bridge.ts:12-14`). Tool names seen in specs: `get_basic_info`, `get_selection`, `create_artboard`, `write_html`, `update_styles`, `get_screenshot`. |
 | CLI | `src/cli/*`, `dist/cli-bin/<platform>/paper` (Go) | Installs the `paper` CLI and writes MCP config into harnesses (`src/mcp/update-harness-config.ts`: JSON/JSONC/TOML, Claude/Cursor/VS Code). |
 | Persistence (desktop-local) | `src/lib/storage.ts` | Only window/tab/app-icon state, as zod-validated JSON under appData (`<key>.json`, `<key>/<id>.json`). **No document data is stored locally.** |
-| Telemetry/updates | `src/lib/telemetry.ts` (posthog-node), `src/lib/updater.ts` (ToDesktop), `src/lib/render-health.ts` (GPU/renderer-crash reporting for "blank-screen investigations") | Not relevant to paper-rs. |
+| Telemetry/updates | `src/lib/telemetry.ts` (posthog-node), `src/lib/updater.ts` (ToDesktop), `src/lib/render-health.ts` (GPU/renderer-crash reporting for "blank-screen investigations") | Not relevant to Sketch. |
 
 ## 3. Preload / IPC contract (`src/preload.ts`)
 
@@ -74,13 +74,13 @@ So the rendering engine, scene model, tools, undo, snapping and the file format 
 
 Selection (`get_selection`), artboards/frames, HTML elements (text, boxes, images through `paper-asset:`), style editing, undo/redo through `edit-command`, client-side zoom/pan, multi-tab/multi-window, PDF/image/video export, Figma import (`open-figma-oauth`) and an AI agent bridge (MCP). Pen/pencil sketching, snapping and the layers panel are not evidenced in the shell. They are web-client features and are specified from the brief in `DESIGN.md`.
 
-## 7. What this means for paper-rs
+## 7. What this means for Sketch
 
-Paper's editor is a browser DOM application, so a "port" means re-implementing the **behavior** on a native GPU stack. Nothing Paper-specific (code, shaders, icons, fonts) is available or reused. paper-rs is local-first (single-file `.paper-rs` documents) where Paper is cloud-first.
+Paper's editor is a browser DOM application, so a "port" means re-implementing the **behavior** on a native GPU stack. Nothing Paper-specific (code, shaders, icons, fonts) is available or reused. Sketch is local-first (single-file `.sketch-rs` documents) where Paper is cloud-first.
 
 ## 8. Keyboard shortcuts with direct evidence
 
-From `src/menu/application-menu.ts`: New File `Cmd/Ctrl+N`, New Tab `Cmd+T`, Reopen Tab `Cmd+Shift+T`, New Window `Cmd+Shift+N`, Close Tab `Cmd+W`, Close Window `Cmd+Shift+W`, Undo `Cmd+Z`, Redo `Cmd+Shift+Z`, Cut/Copy/Paste `Cmd+X/C/V`, Select All `Cmd+A`, Reload `Cmd+R`, Dashboard `Cmd+Shift+D`, tab switching `Ctrl+Tab`, `Cmd+1..9`. From the comment at line 262, canvas zoom is **`Cmd +`, `Cmd -`, `Cmd 0`**. Tool hotkeys live in the web client; paper-rs uses the de-facto design-tool conventions (see `DESIGN.md` §Shortcuts).
+From `src/menu/application-menu.ts`: New File `Cmd/Ctrl+N`, New Tab `Cmd+T`, Reopen Tab `Cmd+Shift+T`, New Window `Cmd+Shift+N`, Close Tab `Cmd+W`, Close Window `Cmd+Shift+W`, Undo `Cmd+Z`, Redo `Cmd+Shift+Z`, Cut/Copy/Paste `Cmd+X/C/V`, Select All `Cmd+A`, Reload `Cmd+R`, Dashboard `Cmd+Shift+D`, tab switching `Ctrl+Tab`, `Cmd+1..9`. From the comment at line 262, canvas zoom is **`Cmd +`, `Cmd -`, `Cmd 0`**. Tool hotkeys live in the web client; Sketch uses the de-facto design-tool conventions (see `DESIGN.md` §Shortcuts).
 
 ## 9. REA static reconstruction
 

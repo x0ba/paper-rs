@@ -742,7 +742,7 @@ impl Headless {
         .map_err(|e| format!("no GPU adapter available: {e}"))?;
         let adapter_info = adapter.get_info();
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("paper-rs headless"),
+            label: Some("sketch-rs headless"),
             required_limits: wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
             ..Default::default()
         }))

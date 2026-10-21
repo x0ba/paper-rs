@@ -6,7 +6,9 @@ use crate::model::{Color, Document, Node, NodeId, NodeKind};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-pub const FORMAT: &str = "paper-rs-library";
+pub const FORMAT: &str = "sketch-rs-library";
+/// The tag from before the rename from paper-rs, still read so a saved library survives it.
+pub const OLD_FORMAT: &str = "paper-rs-library";
 pub const VERSION: u32 = 1;
 pub const FILE: &str = "library.json";
 
@@ -95,8 +97,9 @@ impl Library {
         let mut lib = std::fs::read_to_string(path)
             .ok()
             .and_then(|s| serde_json::from_str::<Library>(&s).ok())
-            .filter(|l| l.format == FORMAT && l.version <= VERSION)
+            .filter(|l| (l.format == FORMAT || l.format == OLD_FORMAT) && l.version <= VERSION)
             .unwrap_or_else(starter);
+        lib.format = FORMAT.into();
         lib.path = Some(path.to_path_buf());
         lib
     }
@@ -258,13 +261,30 @@ mod tests {
 
     #[test]
     fn save_load_roundtrip_and_starter() {
-        let dir = std::env::temp_dir().join(format!("paper-rs-lib-{:016x}", fastrand::u64(..)));
+        let dir = std::env::temp_dir().join(format!("sketch-rs-lib-{:016x}", fastrand::u64(..)));
         let path = dir.join(FILE);
         let lib = Library::load(&path);
         assert!(lib.items.len() >= 5, "starter shapes on first use");
         lib.save().unwrap();
         let back = Library::load(&path);
         assert_eq!(back.items, lib.items);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn library_from_before_the_rename_loads() {
+        let dir = std::env::temp_dir().join(format!("sketch-rs-lib-{:016x}", fastrand::u64(..)));
+        let path = dir.join(FILE);
+        let mut lib = Library::load(&path);
+        lib.items.truncate(1);
+        lib.save().unwrap();
+        let old = std::fs::read_to_string(&path)
+            .unwrap()
+            .replace(FORMAT, OLD_FORMAT);
+        std::fs::write(&path, old).unwrap();
+        let back = Library::load(&path);
+        assert_eq!(back.items, lib.items);
+        assert_eq!(back.format, FORMAT);
         std::fs::remove_dir_all(dir).ok();
     }
 

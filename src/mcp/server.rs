@@ -36,7 +36,7 @@ pub fn tool_list() -> Vec<Tool> {
 /// Server identity, capabilities and instructions.
 pub fn info() -> ServerConfig {
     ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-        .with_server_info(Implementation::new("paper-rs", env!("CARGO_PKG_VERSION")))
+        .with_server_info(Implementation::new("sketch-rs", env!("CARGO_PKG_VERSION")))
         .with_instructions(tools::INSTRUCTIONS)
 }
 
@@ -59,17 +59,17 @@ pub fn to_result(r: ToolResult) -> CallToolResult {
 
 /// One MCP session's handler; all sessions share the dispatcher.
 #[derive(Clone)]
-pub struct PaperServer {
+pub struct SketchServer {
     dispatch: Dispatch,
 }
 
-impl PaperServer {
-    pub fn new(dispatch: Dispatch) -> PaperServer {
-        PaperServer { dispatch }
+impl SketchServer {
+    pub fn new(dispatch: Dispatch) -> SketchServer {
+        SketchServer { dispatch }
     }
 }
 
-impl ServerHandler for PaperServer {
+impl ServerHandler for SketchServer {
     fn get_info(&self) -> ServerConfig {
         info()
     }
@@ -94,12 +94,12 @@ impl ServerHandler for PaperServer {
             reply,
         };
         let r = if !(self.dispatch)(call) {
-            Err("paper-rs is shutting down".to_string())
+            Err("Sketch is shutting down".to_string())
         } else {
             match tokio::time::timeout(CALL_TIMEOUT, rx).await {
                 Ok(Ok(r)) => r,
-                Ok(Err(_)) => Err("paper-rs dropped the call (is it closing?)".into()),
-                Err(_) => Err("paper-rs did not answer in time (is a modal dialog open?)".into()),
+                Ok(Err(_)) => Err("Sketch dropped the call (is it closing?)".into()),
+                Err(_) => Err("Sketch did not answer in time (is a modal dialog open?)".into()),
             }
         };
         Ok(to_result(r).into())
@@ -134,9 +134,9 @@ pub fn router(dispatch: Dispatch, ct: CancellationToken) -> axum::Router {
         .enforce_origin_validation()
         .with_max_request_body_bytes(64 << 20)
         .with_cancellation_token(ct);
-    let service: StreamableHttpService<PaperServer, LocalSessionManager> =
+    let service: StreamableHttpService<SketchServer, LocalSessionManager> =
         StreamableHttpService::new(
-            move || Ok(PaperServer::new(dispatch.clone())),
+            move || Ok(SketchServer::new(dispatch.clone())),
             Default::default(),
             config,
         );
@@ -187,7 +187,7 @@ pub fn spawn(port: u16, dispatch: Dispatch) -> Result<Running, String> {
     let listener = std::net::TcpListener::bind(("127.0.0.1", port)).map_err(|e| {
         if e.kind() == std::io::ErrorKind::AddrInUse {
             format!(
-                "port {port} is in use (another paper-rs instance?); set PAPER_RS_MCP_PORT to use another"
+                "port {port} is in use (another Sketch instance?); set SKETCH_RS_MCP_PORT to use another"
             )
         } else {
             format!("cannot listen on 127.0.0.1:{port}: {e}")
@@ -199,12 +199,12 @@ pub fn spawn(port: u16, dispatch: Dispatch) -> Result<Running, String> {
     let thread_ct = ct.clone();
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
-        .thread_name("paper-rs-mcp")
+        .thread_name("sketch-rs-mcp")
         .enable_all()
         .build()
         .map_err(|e| e.to_string())?;
     let thread = std::thread::Builder::new()
-        .name("paper-rs-mcp-http".into())
+        .name("sketch-rs-mcp-http".into())
         .spawn(move || {
             rt.block_on(async move {
                 let listener = match tokio::net::TcpListener::from_std(listener) {

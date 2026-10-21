@@ -2,7 +2,7 @@
 //!
 //! Agents describe styles the way Paper's MCP server expects them: React-style camelCase CSS
 //! property maps (`{"backgroundColor": "#fff", "padding": "20px"}`) or inline `style="..."`
-//! attributes. This module maps the subset that has a paper-rs equivalent onto `Style`,
+//! attributes. This module maps the subset that has a Sketch equivalent onto `Style`,
 //! `TextStyle`, `AutoLayout` and `LayoutChild`, reports the rest as ignored, and turns nodes
 //! back into CSS for `get_computed_styles` / `get_jsx`.
 
@@ -501,7 +501,7 @@ pub struct Context {
 /// What `apply` did besides changing the node.
 #[derive(Debug, Default)]
 pub struct Applied {
-    /// Properties with no effect in paper-rs (reported back to the agent).
+    /// Properties with no effect in Sketch (reported back to the agent).
     pub ignored: Vec<String>,
     /// Image URL to resolve and use as the top fill (resolved by the caller).
     pub image: Option<(String, ImageMode)>,
@@ -1039,7 +1039,7 @@ pub fn apply(n: &mut Node, styles: &[(String, String)], ctx: &Context) -> Applie
                 }
                 None => false,
             },
-            // Excalidraw-style hand-drawn rendering (paper-rs extensions).
+            // Excalidraw-style hand-drawn rendering (Sketch extensions).
             "sketch" | "handDrawn" => {
                 if matches!(lower.as_str(), "true" | "1" | "on" | "yes") {
                     rough_mut(n);

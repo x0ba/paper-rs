@@ -1,11 +1,10 @@
-//! `paper-rs-mcp`: MCP over stdio for clients that can't speak HTTP, relayed to the running
-//! paper-rs app (`http://127.0.0.1:29980/mcp`, or `$PAPER_RS_MCP_PORT`).
+//! `sketch-rs-mcp`: MCP over stdio for clients that can't speak HTTP, relayed to the running
+//! Sketch app (`http://127.0.0.1:29980/mcp`, or `$SKETCH_RS_MCP_PORT`).
 //!
 //! The tool list is answered locally, so the agent sees every tool even before the app is
 //! started; calls are forwarded to the app and report a clear error while it isn't running.
 //! The connection is opened lazily and re-opened after the app restarts.
 
-use paper_rs::mcp::{self, server};
 use rmcp::model::{
     CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, ListToolsResult,
     PaginatedRequestParams, ResultType, ServerConfig,
@@ -13,18 +12,19 @@ use rmcp::model::{
 use rmcp::service::{RequestContext, RunningService};
 use rmcp::transport::StreamableHttpClientTransport;
 use rmcp::{ErrorData, RoleClient, RoleServer, ServerHandler, ServiceExt};
+use sketch_rs::mcp::{self, server};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 const USAGE: &str = "\
-paper-rs-mcp — stdio MCP bridge to the running paper-rs app
+sketch-rs-mcp: stdio MCP bridge to the running Sketch app
 
 USAGE:
-  paper-rs-mcp            serve MCP on stdin/stdout (what agent harnesses run)
-  paper-rs-mcp --url      print the HTTP endpoint it relays to
-  paper-rs-mcp --help
+  sketch-rs-mcp           serve MCP on stdin/stdout (what agent harnesses run)
+  sketch-rs-mcp --url     print the HTTP endpoint it relays to
+  sketch-rs-mcp --help
 
-The app serves MCP itself at http://127.0.0.1:29980/mcp; set PAPER_RS_MCP_PORT to change
+The app serves MCP itself at http://127.0.0.1:29980/mcp; set SKETCH_RS_MCP_PORT to change
 the port (in both the app's and the bridge's environment).
 ";
 
@@ -42,7 +42,7 @@ impl Bridge {
         let client = ()
             .serve(transport)
             .await
-            .map_err(|e| format!("cannot reach paper-rs at {}: {e}", self.url))?;
+            .map_err(|e| format!("cannot reach Sketch at {}: {e}", self.url))?;
         *self.client.lock().await = Some(client);
         Ok(())
     }
@@ -60,7 +60,7 @@ impl Bridge {
             match res {
                 Ok(r) => return Ok(r),
                 Err(e) if attempt == 0 => {
-                    log::info!("paper-rs-mcp: reconnecting after {e}");
+                    log::info!("sketch-rs-mcp: reconnecting after {e}");
                     *self.client.lock().await = None;
                 }
                 Err(e) => return Err(e.to_string()),
@@ -98,8 +98,8 @@ impl ServerHandler for Bridge {
                 r
             }
             Err(e) => CallToolResult::error(vec![ContentBlock::text(format!(
-                "{e}\nThe paper-rs app is not running or its MCP server is off. Ask the user to \
-                 start paper-rs (it serves MCP while open), then try again."
+                "{e}\nThe Sketch app is not running or its MCP server is off. Ask the user to \
+                 start Sketch (it serves MCP while open), then try again."
             ))]),
         };
         Ok(r.into())
@@ -128,7 +128,7 @@ fn main() -> std::process::ExitCode {
     {
         Ok(rt) => rt,
         Err(e) => {
-            eprintln!("paper-rs-mcp: {e}");
+            eprintln!("sketch-rs-mcp: {e}");
             return std::process::ExitCode::FAILURE;
         }
     };
@@ -147,7 +147,7 @@ fn main() -> std::process::ExitCode {
     match r {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("paper-rs-mcp: {e}");
+            eprintln!("sketch-rs-mcp: {e}");
             std::process::ExitCode::FAILURE
         }
     }

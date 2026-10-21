@@ -1,12 +1,12 @@
-# Figma + Paper behavior notes (clean-room spec for paper-rs)
+# Figma + Paper behavior notes (clean-room spec for Sketch)
 
 Status: behavior spec only. Sources are public documentation (help.figma.com, developers.figma.com plugin/REST API docs, paper.design docs/compare pages) and general observed behavior of the public products. **No code, shaders, icons, fonts or assets from Figma or Paper are copied or referenced.** Paper Desktop's internals are already covered in `PAPER_ARCHITECTURE.md` and are not repeated here.
 
 Conventions:
 * `Cmd` = Cmd on macOS, Ctrl on Windows/Linux. `Alt` = Option.
-* "API:" names the Figma Plugin API property that documents the data model. Use these as field-name inspiration only. paper-rs keeps its own names.
+* "API:" names the Figma Plugin API property that documents the data model. Use these as field-name inspiration only. Sketch keeps its own names.
 * **(verify)** marks rules recalled from product use that are not confirmed in a doc page fetched for this note. Check them against the live app before treating them as hard requirements.
-* "paper-rs note" lines are recommendations for this codebase (`src/model`, `src/editor`, `src/render`). They are not instructions to edit `src/` now.
+* "Sketch note" lines are recommendations for this codebase (`src/model`, `src/editor`, `src/render`). They are not instructions to edit `src/` now.
 
 Primary references:
 * Plugin API node properties: https://developers.figma.com/docs/plugins/api/nodes/ (per-property pages under `/api/properties/`)
@@ -54,7 +54,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360041539473 (Frames), https:/
 * **Cmd+A**: select all siblings of the current selection (or all top-level layers on the page if nothing is selected).
 * Right-click → "Select layer" lists every layer under the cursor in layer-panel order. Hidden layers are excluded, and locked ones show a padlock and are selectable there.
 
-**paper-rs note:** keep `Group` as a node kind with *derived* bounds (cached, invalidated on child change) and auto-delete when empty. Implement `hit_test(depth_policy)` with three policies (default/context, deep, child-of-selection) and a `selection_context: Option<NodeId>` in `Editor`. Frame adopt on draw = contained-sibling scan. Adopt on drag = deepest frame under the pointer, skipping the dragged nodes and their descendants.
+**Sketch note:** keep `Group` as a node kind with *derived* bounds (cached, invalidated on child change) and auto-delete when empty. Implement `hit_test(depth_policy)` with three policies (default/context, deep, child-of-selection) and a `selection_context: Option<NodeId>` in `Editor`. Frame adopt on draw = contained-sibling scan. Adopt on drag = deepest frame under the pointer, skipping the dragged nodes and their descendants.
 
 ---
 
@@ -69,7 +69,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360038662654 (Guide to compone
 * **Overridable per child (each property tracked independently):** visibility; fills; strokes (paint, weight, align, dash); effects; layer opacity and blend mode; corner radius; text characters and all text styling (per-range); font; layout grids; export settings; nested-instance **swap**; component property values (text, boolean, instance-swap, variant); auto-layout padding/gap/sizing on instance sublayers; layer name. The instance root can additionally override size and its own frame props.
 * **Propagation:** an edit to the main writes property P on main-child C. For every instance, if (instance-child ↔ C) has **no override for P**, the instance shows the new value. If it has an override, the instance keeps it. Overrides are per *field*, not per node: overriding a text's color does not freeze its characters.
 * Structural edits on the main (add, remove, reorder, move, resize) always propagate. New children appear in all instances. Deleting a main child removes it from instances along with its overrides.
-* Editing an instance property to a value **equal to the main's value** still records an override in Figma (verify). paper-rs may choose to drop equal overrides.
+* Editing an instance property to a value **equal to the main's value** still records an override in Figma (verify). Sketch may choose to drop equal overrides.
 * **Reset overrides:** "Reset all changes" clears all overrides on the instance subtree. Per-property reset is in the context menu of each panel section.
 * **Detach instance** `Cmd+Alt+B`: converts the instance into a plain frame with the *resolved* values (main + overrides baked in). Nested instances stay instances.
 * **Swap instance:** replace `mainComponent`. Overrides are preserved for children whose **layer name and hierarchy path** match in the new component. Others are dropped. The size is kept if the instance was resized, otherwise it takes the new main's size (verify).
@@ -86,7 +86,7 @@ resolve(instance_child, prop):
   return main_child.prop
 ```
 
-**paper-rs note:** store instances as `{ main: NodeId, overrides: HashMap<(MainChildPath), PropOverrides> }` and **materialize** the instance subtree lazily (a render/hit cache). Do not deep-copy nodes on instance creation. Use a `PropOverrides` struct of `Option<T>` fields so per-field propagation falls out naturally.
+**Sketch note:** store instances as `{ main: NodeId, overrides: HashMap<(MainChildPath), PropOverrides> }` and **materialize** the instance subtree lazily (a render/hit cache). Do not deep-copy nodes on instance creation. Use a `PropOverrides` struct of `Option<T>` fields so per-field propagation falls out naturally.
 
 ---
 
@@ -199,7 +199,7 @@ layout(F):                                   # F has layoutMode != NONE
 ```
 Order of evaluation: HUG sizes are bottom-up (child before parent) and FILL sizes are top-down (parent before child). Two passes are enough: (1) a post-order measure of intrinsic HUG sizes treating FILL as 0 / min, then (2) a pre-order arrange that assigns FILL sizes and positions and re-lays out any child whose size changed.
 
-**paper-rs note:** this maps 1:1 to CSS flexbox (`flex-direction`, `gap`, `padding`, `justify-content`, `align-items`, `flex-wrap`, `flex: 1 1 0` for fill, `align-self: stretch`, `position:absolute`), which is also Paper's model (§14). Implement it as `layout::flex(frame)` in a separate module run after each transaction on dirty subtrees. Store `sizing: {h: Fixed|Hug|Fill, v: …}` per node.
+**Sketch note:** this maps 1:1 to CSS flexbox (`flex-direction`, `gap`, `padding`, `justify-content`, `align-items`, `flex-wrap`, `flex: 1 1 0` for fill, `align-self: stretch`, `position:absolute`), which is also Paper's model (§14). Implement it as `layout::flex(frame)` in a separate module run after each transaction on dirty subtrees. Store `sizing: {h: Fixed|Hug|Fill, v: …}` per node.
 
 ---
 
@@ -213,7 +213,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360039957734 (Apply constraint
 * Groups: a group's children are positioned by the group's *own* constraints relative to the group's parent frame. Resizing a group scales its children proportionally, like SCALE.
 * Hold **Cmd while resizing** a frame to ignore constraints. Resizing an instance always applies constraints.
 * UI: the constraint widget picks with click, and Shift-click adds the opposite side (→ STRETCH).
-* Constraints are relative to the **parent frame's bounds** (not padding). Layout grids can scope constraints to a column (skip for paper-rs).
+* Constraints are relative to the **parent frame's bounds** (not padding). Layout grids can scope constraints to a column (skip for Sketch).
 * Rotated children: constraints apply to the child's axis-aligned bounding box (verify).
 
 ### Pseudo-code (per axis; shown for x)
@@ -232,7 +232,7 @@ apply_constraint_x(child, old_w, new_w):     # positions relative to parent orig
 * Drag-resize from the left/top edge also moves the parent's origin. Express everything relative to the parent so the child's absolute position shifts with MIN constraints exactly as the user expects (children "stick" to the left edge, which moved).
 * To avoid drift from repeated resizes, compute from the state captured at **drag start** (the original child rects), not incrementally per mouse move.
 
-**paper-rs note:** add `Constraints { h: HConstraint, v: VConstraint }` to `Node` (default Min/Min). In the resize gesture, snapshot the child rects on pointer-down and recompute from the snapshot each frame. Cmd during the resize sets `ignore_constraints`.
+**Sketch note:** add `Constraints { h: HConstraint, v: VConstraint }` to `Node` (default Min/Min). In the resize gesture, snapshot the child rects on pointer-down and recompute from the snapshot each frame. Cmd during the resize sets `ignore_constraints`.
 
 ---
 
@@ -266,7 +266,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360040450213 (Vector networks)
 * Operands are evaluated with their fill geometry (strokes are not part of the shape). Order = layer order, bottom first.
 * **Flatten** `Cmd+E`: bakes the selection (booleans, shapes, text) into a single vector network, destructively. Style comes from the top or the boolean group. **Outline stroke** `Cmd+Alt+O` converts a stroke into a filled vector.
 
-**paper-rs note:** use `lyon` for tessellation, and a polygon clipper (`i_overlay` or `geo` boolean, both clean-room, MIT/Apache) on flattened curves for boolean evaluation, cached per boolean node. Start with a path-list model where vertices have `handle_in/handle_out/mirroring`. A full branching network is optional.
+**Sketch note:** use `lyon` for tessellation, and a polygon clipper (`i_overlay` or `geo` boolean, both clean-room, MIT/Apache) on flattened curves for boolean evaluation, cached per boolean node. Start with a path-list model where vertices have `handle_in/handle_out/mirroring`. A full branching network is optional.
 
 ---
 
@@ -286,7 +286,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360041003694 (Fills), https://
 * **Blend modes** (layer and per-paint): PASS_THROUGH (groups/frames default for layer), NORMAL, DARKEN, MULTIPLY, COLOR_BURN, LIGHTEN, SCREEN, COLOR_DODGE, OVERLAY, SOFT_LIGHT, HARD_LIGHT, DIFFERENCE, EXCLUSION, HUE, SATURATION, COLOR, LUMINOSITY (plus PLUS_DARKER/LINEAR_BURN, PLUS_LIGHTER/LINEAR_DODGE). These match CSS `mix-blend-mode` except pass-through.
 * **Effects (brief):** drop shadow (default x 0, y 4, blur 4, spread 0, `#000` 25%), inner shadow, layer blur, background blur. Shadows follow the fill shape. "Show behind transparent areas" is a toggle.
 
-**paper-rs note:** model `fills: Vec<Paint>`, `strokes: Vec<Paint>`, `stroke: StrokeStyle {weight, align, dash, cap, join, miter}`, `corner_radii: [f32;4]`. Render layer opacity < 1 or non-normal blend through an offscreen layer (wgpu render-to-texture), and render per-paint opacity inline. Implement inside/outside stroke via stencil or clip of a 2× stroke.
+**Sketch note:** model `fills: Vec<Paint>`, `strokes: Vec<Paint>`, `stroke: StrokeStyle {weight, align, dash, cap, join, miter}`, `corner_radii: [f32;4]`. Render layer opacity < 1 or non-normal blend through an offscreen layer (wgpu render-to-texture), and render per-paint opacity inline. Implement inside/outside stroke via stencil or clip of a 2× stroke.
 
 ---
 
@@ -306,7 +306,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360039956434 (Text properties)
 * **Text styles:** a named style = {font family, style, size, line height, letter spacing, paragraph spacing, case, decoration}. Applying one links the range. Editing the style updates all linked ranges. Detaching keeps the values. Fill color is *not* part of a text style (a color style is separate).
 * Scaling text with the Scale tool `K` (or Shift+drag with K) scales the font size. A normal resize only reflows.
 
-**paper-rs note:** current `render/text.rs` lays out glyph outlines with `ttf-parser`. Add `TextAutoResize` and an attributed-string model `Vec<(Range<usize>, TextStyle)>` merged on edit. Ship Inter (OFL) as already planned and keep egui's font as fallback.
+**Sketch note:** current `render/text.rs` lays out glyph outlines with `ttf-parser`. Add `TextAutoResize` and an attributed-string model `Vec<(Range<usize>, TextStyle)>` merged on edit. Ship Inter (OFL) as already planned and keep egui's font as fallback.
 
 ---
 
@@ -325,7 +325,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360039956914 (Adjust alignment
 * **Tidy up** (`Ctrl+Alt+T`): for a selection that roughly forms a row, column or grid, snap it to an even grid. Figma clusters into rows and columns by overlap, uses the **median/most-common** spacing (rounded) as the gap, aligns each row's top edge and each column's left edge, and keeps the first item's position. The result becomes a "smart selection" (§9).
 * **Smart selection:** when the selected items are evenly spaced, the canvas shows pink spacing handles between them. Dragging a handle changes all gaps together, and dragging an item's center dot reorders it (swaps positions).
 
-**paper-rs note:** implement `align(nodes, Edge, reference)` and `distribute(nodes, axis)` as pure functions over AABBs returning translations, then wrap them in one undo transaction.
+**Sketch note:** implement `align(nodes, Edge, reference)` and `distribute(nodes, axis)` as pure functions over AABBs returning translations, then wrap them in one undo transaction.
 
 ---
 
@@ -334,15 +334,15 @@ Sources: https://help.figma.com/hc/en-us/articles/360039956914 (Adjust alignment
 Sources: https://help.figma.com/hc/en-us/articles/360040450233, https://help.figma.com/hc/en-us/articles/360039956974 (Measure distances), plus observed behavior.
 
 * **Snap targets** while moving or resizing (in document space): the left/center/right x and top/center/bottom y of (a) siblings in the same parent, (b) the parent frame, (c) other top-level frames when at top level, (d) layout grid lines and (e) the pixel grid when "Snap to pixel grid" is on (default on: positions rounded to integers at the end of a move). The dragged layer's own 3 x-anchors and 3 y-anchors are tested against all targets.
-* **Threshold:** roughly **4–6 screen px** (Figma feels like ~5). It is converted to document units as `thr / zoom`. paper-rs already uses `SNAP_PX = 6.0` screen px (`src/editor/snap.rs`), which is fine. Per axis, the target with the smallest |delta| wins, and x and y snap independently.
+* **Threshold:** roughly **4–6 screen px** (Figma feels like ~5). It is converted to document units as `thr / zoom`. Sketch already uses `SNAP_PX = 6.0` screen px (`src/editor/snap.rs`), which is fine. Per axis, the target with the smallest |delta| wins, and x and y snap independently.
 * **Guides:** red/pink (`#F24822`-ish "Figma red") 1 px lines spanning from the dragged layer to the matched target, with small × markers at the matched points. Multiple targets with the same coordinate are all drawn.
 * **Equal spacing:** when the gap between the dragged layer and a neighbor equals an existing gap between two other siblings on the same axis (within the threshold), snap to it and draw spacing indicators (pink bars with the px value) on **all** equal gaps.
-* **Disable snapping:** Figma has no single documented modifier. Cmd while *resizing* means "ignore constraints", not "no snap". paper-rs should hold **Ctrl** (or offer a toggle) to suspend snapping (verify against Figma). Nudging with the arrow keys (1 px, Shift = 10 px, configurable "big nudge") never snaps.
+* **Disable snapping:** Figma has no single documented modifier. Cmd while *resizing* means "ignore constraints", not "no snap". Sketch should hold **Ctrl** (or offer a toggle) to suspend snapping (verify against Figma). Nudging with the arrow keys (1 px, Shift = 10 px, configurable "big nudge") never snaps.
 * **Alt-hover measurement:** with a layer selected, holding **Alt** and hovering another layer shows red lines with **distance labels** between the nearest edges of the selection and the hovered layer on each axis (only axes with a gap). Hovering the parent (or empty space inside the parent) shows the distances from the selection to the parent's 4 inner edges. Overlapping layers show inside distances (edge to edge). Labels are white text on red rounded pills, values rounded to 2 dp and displayed without trailing zeros.
 * **Size label:** while drawing, moving or resizing, a blue/primary pill under the selection shows `W × H`. While moving, Figma shows the distance to the parent edges only with Alt.
 * Rotation snaps to 15° with Shift. Resizing with Shift keeps the aspect ratio, and Alt resizes from the center.
 
-**paper-rs note:** `editor/snap.rs` already does edge/center snapping. Add (1) equal-spacing detection: collect sibling gaps on each axis and match the candidate gap within the threshold, (2) an Alt-measure overlay computed on hover and drawn in screen space, (3) a pixel-grid rounding toggle. Keep all thresholds in **screen px**.
+**Sketch note:** `editor/snap.rs` already does edge/center snapping. Add (1) equal-spacing detection: collect sibling gaps on each axis and match the candidate gap within the threshold, (2) an Alt-measure overlay computed on hover and drawn in screen space, (3) a pixel-grid rounding toggle. Keep all thresholds in **screen px**.
 
 ---
 
@@ -360,7 +360,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360039959014 (Layers panel), o
 * Multi-row drag keeps the relative order of the dragged nodes.
 * Selected rows use a light primary-tint background. Rows whose ancestor is selected get a lighter tint.
 
-**paper-rs note:** the egui tree needs a drop-target resolver: `(row_index, pointer_y_fraction, pointer_x) → DropTarget::{Before(id), After(id, depth), Into(id)}` with the top 25% = before, bottom 25% = after, and the middle 50% = into for containers. Preserve world transforms on reparent.
+**Sketch note:** the egui tree needs a drop-target resolver: `(row_index, pointer_y_fraction, pointer_x) → DropTarget::{Before(id), After(id, depth), Into(id)}` with the top 25% = before, bottom 25% = after, and the middle 50% = into for containers. Preserve world transforms on reparent.
 
 ---
 
@@ -375,7 +375,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360039958594 (Pages), API `Pag
 * "Move to page" in the context menu moves layers to another page, keeping coordinates.
 * Undo history is per file (spans pages), and an undo switches to the affected page.
 
-**paper-rs note:** `Document { pages: Vec<Page> }`, `Page { id, name, roots: Vec<NodeId>, bg, camera }`. The node arena can stay global. Persist `camera` per page in the `.paper-rs` file.
+**Sketch note:** `Document { pages: Vec<Page> }`, `Page { id, name, roots: Vec<NodeId>, bg, camera }`. The node arena can stay global. Persist `camera` per page in the `.sketch-rs` file.
 
 ---
 
@@ -386,7 +386,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360040328653 (Keyboard shortcu
 ### Command palette
 * **Figma UI3: `Cmd+K` opens the "Actions" menu** (search commands, plugins, components, and recent actions). **`Cmd+/` (Windows `Ctrl+/` or `Ctrl+P`) is the legacy "Quick actions"** and still opens the same menu. Create link moved from Cmd+K to `Cmd+Shift+U`.
 * Behavior: a fuzzy search over menu commands (with their shortcut shown), plugins, assets and settings. Enter runs, ↑/↓ navigate, Esc closes. Recent commands show first when the query is empty. Commands that are disabled for the current selection are hidden or greyed.
-* **paper-rs:** bind both `Cmd+K` and `Cmd+/` to a palette fed by the single keymap table (`editor/shortcuts.rs`), so the palette, menus and README stay in sync.
+* **Sketch:** bind both `Cmd+K` and `Cmd+/` to a palette fed by the single keymap table (`editor/shortcuts.rs`), so the palette, menus and README stay in sync.
 
 ### Figma shortcut table (macOS; Windows: Cmd→Ctrl, Alt=Alt)
 | Category | Action | Shortcut |
@@ -462,7 +462,7 @@ Sources: https://help.figma.com/hc/en-us/articles/360040328653 (Keyboard shortcu
 
 ### Paper shortcuts with direct evidence
 * App shell (`PAPER_ARCHITECTURE.md` §8): New File `Cmd+N`, tabs `Cmd+T/W/Shift+T`, Undo/Redo `Cmd+Z/Shift+Z`, Dashboard `Cmd+Shift+D`, zoom `Cmd +` / `Cmd -` / `Cmd 0`.
-* Docs (https://paper.design/docs/svg, /docs/paste): Pen `P`, Move `M`, Enter = path edit, Esc = exit path edit, Create SVG (AI) `Cmd+Shift+J`, pixel snapping toggle `Cmd+Shift+'`, Paste `Cmd+V`, **Paste to replace `Cmd+R`** (Figma uses `Cmd+R` for rename. paper-rs follows Figma: `Cmd+R` = rename, `Cmd+Shift+R` = paste to replace).
+* Docs (https://paper.design/docs/svg, /docs/paste): Pen `P`, Move `M`, Enter = path edit, Esc = exit path edit, Create SVG (AI) `Cmd+Shift+J`, pixel snapping toggle `Cmd+Shift+'`, Paste `Cmd+V`, **Paste to replace `Cmd+R`** (Figma uses `Cmd+R` for rename. Sketch follows Figma: `Cmd+R` = rename, `Cmd+Shift+R` = paste to replace).
 
 ---
 
@@ -475,9 +475,9 @@ Sources: https://help.figma.com/hc/en-us/articles/360040028114 (Export from Figm
 * **What is rendered:** the layer and its descendants, cropped to the layer's bounds. A frame with clip content crops to the frame. A frame without clip, or a group/shape, includes **effects and strokes bleeding outside** (render bounds) unless "Use absolute bounds" is set. **Contents only** (default true) excludes overlapping layers that are not descendants. A frame's own fill is included, and the canvas background is never included.
 * Selection with no export settings: the panel shows "Export <name>". `Cmd+Shift+E` opens "Export" for every layer with export settings on the page, as a zip/multi-file.
 * **Copy as:** `Cmd+Shift+C` copy as PNG (scale: 1x or device-pixel-ratio, verify), "Copy as SVG", "Copy as code (CSS)", "Copy link". Copy as SVG uses the same SVG exporter, and the text is placed on the clipboard as `image/svg+xml` + plain text.
-* **PDF multi-frame:** "Export frames to PDF" (File menu) exports **all top-level frames of the current page as one multi-page PDF**, one frame per page, in layers-panel order (verify; paper-rs should sort top-to-bottom, then left-to-right, which is deterministic). Page size = frame size at 72 dpi (1 px = 1 pt). Paper does this desktop-side by printing HTML pages and merging with pdf-lib (`PAPER_ARCHITECTURE.md` §2).
+* **PDF multi-frame:** "Export frames to PDF" (File menu) exports **all top-level frames of the current page as one multi-page PDF**, one frame per page, in layers-panel order (verify; Sketch should sort top-to-bottom, then left-to-right, which is deterministic). Page size = frame size at 72 dpi (1 px = 1 pt). Paper does this desktop-side by printing HTML pages and merging with pdf-lib (`PAPER_ARCHITECTURE.md` §2).
 
-**paper-rs note:** add `export_settings: Vec<ExportSetting>` to `Node`. PNG/SVG already exist (`gpu.rs` readback, SVG writer). For PDF use a pure-Rust writer (`pdf-writer` or `printpdf`, MIT/Apache) emitting vector paths, one page per top-level frame sorted top-to-bottom then left-to-right. Copy as PNG/SVG goes via `arboard`.
+**Sketch note:** add `export_settings: Vec<ExportSetting>` to `Node`. PNG/SVG already exist (`gpu.rs` readback, SVG writer). For PDF use a pure-Rust writer (`pdf-writer` or `printpdf`, MIT/Apache) emitting vector paths, one page per top-level frame sorted top-to-bottom then left-to-right. Copy as PNG/SVG goes via `arboard`.
 
 ---
 
@@ -485,20 +485,20 @@ Sources: https://help.figma.com/hc/en-us/articles/360040028114 (Export from Figm
 
 Sources: https://paper.design/compare/figma, https://paper.design/docs, https://paper.design/docs/svg, https://paper.design/docs/paste, https://paper.design/docs/tokens, and `analysis/PAPER_ARCHITECTURE.md`.
 
-* **The canvas is real HTML/CSS** ("web-native, no translation step"). Every node is an element with CSS styles. Top-level containers are **artboards** (`create_artboard` MCP tool). Inner content is created via `write_html` and styled via `update_styles`. Consequences paper-rs can mirror in naming and semantics:
+* **The canvas is real HTML/CSS** ("web-native, no translation step"). Every node is an element with CSS styles. Top-level containers are **artboards** (`create_artboard` MCP tool). Inner content is created via `write_html` and styled via `update_styles`. Consequences Sketch can mirror in naming and semantics:
   * **Box model:** `width/height` + `padding` + `border` follows CSS `box-sizing` (Paper presumably uses `border-box`, so the stroke/border sits *inside* the size, which equals Figma INSIDE stroke align). **Outlines** are a separate property (drawn outside, not affecting layout). Shadows are CSS `box-shadow` (multiple, `inset`), and filters are CSS `filter`/`backdrop-filter`.
   * **Layout is real CSS flexbox** (compare page). Paper's UI names follow CSS: direction row/column, `gap`, `justify-content` (start/center/end/space-between), `align-items` (start/center/end/stretch/baseline), `flex-wrap`, child `flex-grow`/fill vs fit-content (hug) vs fixed px, `position: absolute`. Figma's "auto layout" maps as: Hug = `fit-content`/auto size, Fill = `flex: 1` (primary) or `align-self: stretch` (counter), Ignore auto layout = `position: absolute`.
   * Text is HTML text: line-height and letter-spacing in CSS units, wrapping by the browser's line breaker, and `width: auto` for auto-width.
   * Overflow clipping = `overflow: hidden` on the container.
 * **Color:** per-element color spaces in one file (sRGB and **Display P3**, `oklch()`, `display-p3`, hex). The picker uses **OkLCH/Oklab** (perceptually uniform) instead of HSB. Figma has a single file-wide sRGB/P3 toggle.
-* **Shader effects:** a collection of GPU shader fills/effects (`shaders.paper.design`, an open-source package). paper-rs could offer its own wgpu shader fills. Do not copy Paper's shader code.
+* **Shader effects:** a collection of GPU shader fills/effects (`shaders.paper.design`, an open-source package). Sketch could offer its own wgpu shader fills. Do not copy Paper's shader code.
 * **Tokens:** design tokens (CSS-variable-like) style designs (`/docs/tokens`).
 * **Paste:** images, SVG, text, Figma copy-paste and **HTML pasted as editable layers**. `Cmd+R` = paste to replace.
 * **SVG/vector:** pixel snapping to half-pixels (`Cmd+Shift+'`). Pen inside an SVG adds a path, and outside creates a new SVG. Booleans, shape primitives and branching vector networks are roadmap only, so Paper is currently *less* capable than Figma here.
 * **Agent/MCP-first:** tools such as `get_selection`, `get_screenshot` and `write_html`, and the AI "Create SVG" (`Cmd+Shift+J`).
 * **Cloud-first:** files at `paper.design/file/<id>/<pageId>`, a Dashboard tab (`Cmd+Shift+D`), multi-tab desktop, and PDF export by printing HTML per artboard.
 
-**paper-rs note:** use CSS vocabulary in the properties panel ("Flex row/column", gap, justify/align, padding, "Fit"/"Fill"/fixed). Treat stroke as border-box inside by default for frames, and offer an `outline` (outside, non-layout) as Paper does. Add an OkLCH color picker. SVG/HTML export can map 1:1 because the model is CSS-shaped.
+**Sketch note:** use CSS vocabulary in the properties panel ("Flex row/column", gap, justify/align, padding, "Fit"/"Fill"/fixed). Treat stroke as border-box inside by default for frames, and offer an `outline` (outside, non-layout) as Paper does. Add an OkLCH color picker. SVG/HTML export can map 1:1 because the model is CSS-shaped.
 
 ---
 
@@ -513,11 +513,11 @@ Sources: https://help.figma.com/hc/en-us/articles/1500005554982 (File browser), 
 * **Version history:** autosave with named versions (`Cmd+Alt+S` "Save to version history"), restorable.
 * Paper analog: the Dashboard tab lists cloud files. The desktop shell syncs renames across windows (`desktop:resource-renamed`).
 
-**paper-rs note:** local-first equivalent: a recents list in the app config dir (`recents.json`: path, last_opened, thumbnail path). Generate thumbnails on save by rendering the first top-level frame (or the whole page) to a 320×200 PNG via the existing offscreen path. "Delete" moves the file to an app-managed `.trash/` with metadata so it can be restored, or uses the OS trash via the `trash` crate.
+**Sketch note:** local-first equivalent: a recents list in the app config dir (`recents.json`: path, last_opened, thumbnail path). Generate thumbnails on save by rendering the first top-level frame (or the whole page) to a 320×200 PNG via the existing offscreen path. "Delete" moves the file to an app-managed `.trash/` with metadata so it can be restored, or uses the OS trash via the `trash` crate.
 
 ---
 
-## Appendix: implementation priorities for paper-rs (suggested)
+## Appendix: implementation priorities for Sketch (suggested)
 1. Selection model (§1) + group bounds + frame adopt: highest UX impact and cheap.
 2. Constraints (§4) on frame resize, with snapshot-based recomputation.
 3. Auto layout (§3) as a flex engine. This also unlocks Paper-style CSS vocabulary (§14).

@@ -1,41 +1,94 @@
+/* Tokens and base styles from the terminal-rs download page (github.com/michaelshimeles/terminal-rs, site/src/app.css). */
+
+/* app.html repeats both values of --bg for the theme-color tag. */
 :root {
-	color-scheme: light dark;
-	--bg: light-dark(#f4f4f6, #161618);
-	--dot: light-dark(#d8d8df, #2a2a2e);
-	--card: light-dark(#ffffff, #1e1e21);
-	--fg: light-dark(#1d1d1f, #ececee);
-	--muted: light-dark(#66666e, #9a9aa2);
-	--line: light-dark(#e2e2e7, #2e2e32);
-	--accent: light-dark(#2a64e6, #6f9fff);
-	--on-accent: light-dark(#ffffff, #0b1530);
-	--glow: light-dark(rgb(42 100 230 / 0.28), rgb(111 159 255 / 0.22));
-	--shadow: light-dark(rgb(17 17 26 / 0.14), rgb(0 0 0 / 0.55));
-}
-
-:root[data-theme='light'] {
-	color-scheme: light;
-}
-
-:root[data-theme='dark'] {
+	--bg: #0a0a0b;
+	--fg: #f4f4f5;
+	--muted: #8e8e93;
+	--line: rgba(255, 255, 255, 0.08);
+	--card: #161618;
+	--card-edge: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.09);
+	--glass: rgba(24, 24, 28, 0.46);
+	--glass-edge:
+		inset 0 0.5px 0 rgba(255, 255, 255, 0.28), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14),
+		0 10px 28px -8px rgba(0, 0, 0, 0.5);
+	--raised: linear-gradient(168deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08) 46%, rgba(255, 255, 255, 0.14));
+	--raised-edge:
+		inset 0 0.5px 0 rgba(255, 255, 255, 0.62), inset 0 -0.5px 0 rgba(255, 255, 255, 0.2),
+		inset 0 0 0 0.5px rgba(255, 255, 255, 0.2), 0 4px 14px rgba(0, 0, 0, 0.38);
+	--solid: #f5f5f7;
+	--solid-hover: #fff;
+	--on-solid: #000;
+	--blue: #6e9bff;
+	--mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+	--sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', sans-serif;
+	--display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, 'Segoe UI', sans-serif;
+	/* The app draws its interface in Inter, so the recreations of it do too. */
+	--inter: 'Inter Variable', Inter, var(--sans);
 	color-scheme: dark;
 }
 
-/* Elements that only show in one theme: a saved choice wins, else the system setting. */
-:root[data-theme='light'] .when-dark,
-:root[data-theme='dark'] .when-light {
-	display: none;
+:root[data-theme='light'] {
+	--bg: #f5f5f7;
+	--fg: #1d1d1f;
+	--muted: #6e6e73;
+	--line: rgba(0, 0, 0, 0.08);
+	--card: #fff;
+	--card-edge: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+	--glass: rgba(255, 255, 255, 0.62);
+	--glass-edge:
+		inset 0 0.5px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 0.5px rgba(0, 0, 0, 0.08),
+		0 10px 28px -8px rgba(0, 0, 0, 0.14);
+	--raised: linear-gradient(168deg, #fff, rgba(255, 255, 255, 0.78) 46%, rgba(255, 255, 255, 0.92));
+	--raised-edge: inset 0 0.5px 0 #fff, inset 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.08);
+	--solid: #1d1d1f;
+	--solid-hover: #000;
+	--on-solid: #fff;
+	--blue: #0a6cff;
+	color-scheme: light;
 }
 
-@media (prefers-color-scheme: light) {
-	:root:not([data-theme]) .when-dark {
-		display: none;
-	}
+/*
+ * The app's dark and light palettes (src/theme.rs), for the recreations of its window. The canvas
+ * itself stays light in both, as it does in the app.
+ */
+.app {
+	--window: #2b2b2d;
+	--sidebar: #262628;
+	--inspector: #252527;
+	--control: #3a3a3c;
+	--control-edge: rgba(255, 255, 255, 0.086);
+	--field: #1f1f21;
+	--text: #ececee;
+	--secondary: #98989d;
+	--tertiary: #636366;
+	--separator: #3a3a3c;
+	--popover: #323234;
+	--hover: rgba(255, 255, 255, 0.08);
+	--accent: #007aff;
+	--popover-shadow: 0 3px 13px rgba(0, 0, 0, 0.4);
+	--canvas: #eeeef0;
+	--dots: #cfcfd6;
+	--select: #2f6ff3;
+	--guide: #f22f7a;
+	--ink: #1e1e1e;
+	--label: #6b6b75;
 }
 
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme]) .when-light {
-		display: none;
-	}
+:root[data-theme='light'] .app {
+	--window: #f6f6f6;
+	--sidebar: #eeeef0;
+	--inspector: #f6f6f6;
+	--control: #fff;
+	--control-edge: rgba(0, 0, 0, 0.118);
+	--field: #fff;
+	--text: #1d1d1f;
+	--secondary: #86868b;
+	--tertiary: #b8b8bc;
+	--separator: #dcdcde;
+	--popover: #fcfcfc;
+	--hover: rgba(0, 0, 0, 0.05);
+	--popover-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 3px 13px rgba(0, 0, 0, 0.14);
 }
 
 *,
@@ -49,24 +102,51 @@ body {
 	margin: 0;
 }
 
+html {
+	scroll-behavior: smooth;
+	scroll-padding-top: 88px;
+}
+
 body {
-	background-color: var(--bg);
-	background-image: radial-gradient(var(--dot) 1px, transparent 1.5px);
-	background-size: 24px 24px;
-	background-position: 12px 12px;
+	background: var(--bg);
 	color: var(--fg);
-	font:
-		16px/1.55 'Inter Variable',
-		-apple-system,
-		BlinkMacSystemFont,
-		'Segoe UI',
-		sans-serif;
+	font: 16px/1.55 var(--sans);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
 
-a:focus-visible,
-button:focus-visible {
-	outline: 2px solid var(--accent);
-	outline-offset: 2px;
+a {
+	color: inherit;
+}
+
+:focus-visible {
+	outline: 2px solid var(--blue);
+	outline-offset: 3px;
+}
+
+[data-reveal] {
+	opacity: 0;
+	translate: 0 18px;
+	transition:
+		opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--delay, 0s),
+		translate 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--delay, 0s);
+}
+
+[data-reveal][data-shown] {
+	opacity: 1;
+	translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
 }

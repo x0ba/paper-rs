@@ -3,7 +3,7 @@
 Clean-room study of how the Paper desktop app (`~/paper-target`, Electron, `app.asar`) exposes
 its canvas to AI agents over MCP. Behaviour only: nothing from Paper is copied into this
 repository. Raw material (REA output, recovered sources, the public tool config) stays in
-`analysis/raw/`, which is gitignored. The paper-rs implementation (`src/mcp/`) was written
+`analysis/raw/`, which is gitignored. The Sketch implementation (`src/mcp/`) was written
 from these notes.
 
 Sources:
@@ -136,9 +136,9 @@ artboards when content clips; never show raw node ids; call `finish_working_on_n
 * Positions: `x/y` are relative to the parent, `worldX/worldY` absolute; both `null` when the
   value depends on flex layout that hasn't been measured (inactive page).
 
-## 4. Mapping to paper-rs
+## 4. Mapping to Sketch
 
-| Paper | paper-rs |
+| Paper | Sketch |
 |---|---|
 | file (`fileId`) | project (manifest id, or folder path); the open project is "the file the user is viewing" |
 | page (`pageId`) | page (`PageRef.id`); edits on parked pages go to that page's own document and undo history |
@@ -154,5 +154,5 @@ artboards when content clips; never show raw node ids; call `finish_working_on_n
 Not carried over (no equivalent in a local-first single-user app): comments, design tokens,
 teams/folders/drafts, AI image generation (`paper-gen://`), video export, the per-agent
 "working" indicator (kept as a harmless no-op tool so agent prompts written for Paper work).
-Added for paper-rs: whiteboard shapes and hand-drawn style (`create_shape`, Excalidraw keys
+Added for Sketch: whiteboard shapes and hand-drawn style (`create_shape`, Excalidraw keys
 in `update_styles`), `undo`/`redo`, and page/project listing.

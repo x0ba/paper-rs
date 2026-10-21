@@ -108,7 +108,7 @@ pub fn draw(ui: &mut Ui, hv: &mut HomeView, native_chrome: bool, translucent: bo
             }
             ui.add_space(4.0);
             ui.label(
-                RichText::new("paper-rs")
+                RichText::new("Sketch")
                     .font(theme::semibold(theme::SECONDARY))
                     .color(p.secondary),
             );

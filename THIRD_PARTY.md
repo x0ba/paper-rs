@@ -1,6 +1,6 @@
 # Third-party code and assets
 
-paper-rs is MIT OR Apache-2.0. It ports a few algorithms from MIT-licensed projects (listed
+Sketch is MIT OR Apache-2.0. It ports a few algorithms from MIT-licensed projects (listed
 below with their copyright notices and license text) and bundles the Inter font (SIL OFL 1.1,
 `assets/fonts/OFL.txt`). Figma and Paper are proprietary: only their *behavior* was studied
 (`analysis/FIGMA_NOTES.md`, `analysis/PAPER_ARCHITECTURE.md`), and no code, shaders, icons or
@@ -51,6 +51,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Download page
+
+`site/` follows the download page of [terminal-rs](https://github.com/michaelshimeles/terminal-rs)
+(`site/`), another project by the same author, ported at his request. The page layout and base
+styles, the demo's player, desktop and sound effects, the easing, frame, motion and theme helpers,
+the card scaler and the Open Graph layout come from there, and each of those files starts with a
+comment naming its source. The page also
+bundles [rough.js](https://github.com/rough-stuff/rough) 4.6.6 from npm (MIT, Copyright (c) 2019
+Preet Shihn, license text above) to draw its hand-drawn shapes.
 
 ## Agent skills
 

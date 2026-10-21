@@ -1,12 +1,12 @@
 [package]
-name = "paper-rs-site-shots"
+name = "sketch-rs-site-shots"
 version = "0.0.0"
 edition = "2024"
 publish = false
-description = "Renders the lander's screenshots through paper-rs's own UI and renderer"
+description = "Renders the lander's screenshots through sketch-rs's own UI and renderer"
 
 [dependencies]
-paper-rs = { path = "../../.." }
+sketch-rs = { path = "../../.." }
 egui = "0.36"
 image = { version = "0.25", default-features = false, features = ["png"] }
 serde_json = "1"

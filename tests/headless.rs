@@ -5,14 +5,14 @@ mod common;
 
 use common::*;
 
-use paper_rs::demo;
-use paper_rs::editor::{Button, Editor, InputEvent, Key, Modifiers, Tool};
-use paper_rs::geom::{Rect, V2, v2};
-use paper_rs::io::{file, png, svg};
-use paper_rs::model::{Color, Node, NodeId, NodeKind};
-use paper_rs::render::frame;
-use paper_rs::render::scene::{self, ACCENT, CANVAS_BG, GUIDE};
-use paper_rs::ui::UiState;
+use sketch_rs::demo;
+use sketch_rs::editor::{Button, Editor, InputEvent, Key, Modifiers, Tool};
+use sketch_rs::geom::{Rect, V2, v2};
+use sketch_rs::io::{file, png, svg};
+use sketch_rs::model::{Color, Node, NodeId, NodeKind};
+use sketch_rs::render::frame;
+use sketch_rs::render::scene::{self, ACCENT, CANVAS_BG, GUIDE};
+use sketch_rs::ui::UiState;
 
 #[test]
 fn m1_infinite_canvas_pan_and_zoom() {
@@ -499,14 +499,14 @@ fn m5_layers_panel_and_undo_redo() {
 fn m6_save_load_and_export() {
     let Some(g) = gpu() else { return };
     let e = demo::showcase();
-    let dir = std::env::temp_dir().join(format!("paper-rs-m6-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("sketch-rs-m6-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("launch.paper-rs");
+    let path = dir.join("launch.sketch-rs");
     file::save(&path, &e.doc, Some(&e.camera)).unwrap();
     let (doc, cam) = file::load(&path).unwrap();
     assert_eq!(doc, e.doc);
     assert_eq!(cam, Some(e.camera));
-    std::fs::copy(&path, shot("m6_launch_plan.paper-rs")).unwrap();
+    std::fs::copy(&path, shot("m6_launch_plan.sketch-rs")).unwrap();
 
     // PNG export of the first frame at 2x, white background.
     let week = doc.root[0];
@@ -556,7 +556,7 @@ fn app_full_ui_screenshot() {
         close(
             img.get_pixel(20, 600).0,
             {
-                let c = paper_rs::theme::palette(false).sidebar;
+                let c = sketch_rs::theme::palette(false).sidebar;
                 Color::rgb(c.r(), c.g(), c.b())
             },
             3
@@ -612,7 +612,7 @@ fn m6_svg_export_matches_gpu_render() {
 fn skipped_first_frame_keeps_egui_textures_in_sync() {
     let Some(g) = gpu() else { return };
     let ctx = egui::Context::default();
-    paper_rs::ui::setup_style(&ctx);
+    sketch_rs::ui::setup_style(&ctx);
     let mut e = demo::showcase();
     let mut st = UiState::default();
     let (pts, ppp) = ([800.0f32, 600.0f32], 2.0f32);
@@ -632,7 +632,7 @@ fn skipped_first_frame_keeps_egui_textures_in_sync() {
         .collect(),
         ..Default::default()
     };
-    let mut painter = frame::Painter::new(&g.device, paper_rs::render::gpu::OFFSCREEN_FORMAT);
+    let mut painter = frame::Painter::new(&g.device, sketch_rs::render::gpu::OFFSCREEN_FORMAT);
     let tex = g.target(size);
     let view = tex.create_view(&Default::default());
     // Frame 1: surface unavailable -> skipped.

@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn replaces_file_and_leaves_no_temp() {
-        let dir = std::env::temp_dir().join(format!("paper-rs-atomic-{}", fastrand::u64(..)));
+        let dir = std::env::temp_dir().join(format!("sketch-rs-atomic-{}", fastrand::u64(..)));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("a.json");
         write(&p, b"one").unwrap();

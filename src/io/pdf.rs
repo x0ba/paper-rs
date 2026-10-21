@@ -531,7 +531,7 @@ pub fn export(pages: &[PdfPage]) -> Vec<u8> {
     }
     let _ = write!(
         x,
-        "trailer\n<< /Size {} /Root {catalog} 0 R /Info << /Producer (paper-rs) >> >>\nstartxref\n{xref}\n%%EOF\n",
+        "trailer\n<< /Size {} /Root {catalog} 0 R /Info << /Producer (Sketch) >> >>\nstartxref\n{xref}\n%%EOF\n",
         objs.objs.len() + 1
     );
     out.extend_from_slice(x.as_bytes());

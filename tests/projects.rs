@@ -3,18 +3,18 @@
 mod common;
 
 use common::*;
-use paper_rs::demo;
-use paper_rs::editor::Editor;
-use paper_rs::geom::{Rect, v2};
-use paper_rs::model::{Color, Node, NodeId, NodeKind};
-use paper_rs::project::{PageData, Project, Store};
-use paper_rs::render::frame;
-use paper_rs::session::{self, Session};
-use paper_rs::ui::UiState;
-use paper_rs::ui::home::{HomeAction, HomeView};
+use sketch_rs::demo;
+use sketch_rs::editor::Editor;
+use sketch_rs::geom::{Rect, v2};
+use sketch_rs::model::{Color, Node, NodeId, NodeKind};
+use sketch_rs::project::{PageData, Project, Store};
+use sketch_rs::render::frame;
+use sketch_rs::session::{self, Session};
+use sketch_rs::ui::UiState;
+use sketch_rs::ui::home::{HomeAction, HomeView};
 
 fn temp_store(tag: &str) -> Store {
-    let root = std::env::temp_dir().join(format!("paper-rs-{tag}-{:016x}", fastrand::u64(..)));
+    let root = std::env::temp_dir().join(format!("sketch-rs-{tag}-{:016x}", fastrand::u64(..)));
     Store::open(root).unwrap()
 }
 
@@ -22,18 +22,18 @@ fn temp_store(tag: &str) -> Store {
 fn populate(store: &Store) -> Vec<std::path::PathBuf> {
     let mut dirs = Vec::new();
     let showcase = demo::showcase();
-    let boards: Vec<(&str, paper_rs::model::Document)> = vec![
+    let boards: Vec<(&str, sketch_rs::model::Document)> = vec![
         ("Launch plan", showcase.doc.clone()),
         ("Brand moodboard", demo::moodboard().doc),
         ("Onboarding flow", demo::flow().doc),
-        ("Empty ideas", paper_rs::model::Document::default()),
+        ("Empty ideas", sketch_rs::model::Document::default()),
     ];
     for (i, (name, doc)) in boards.into_iter().enumerate() {
         let p = store
             .create_with_pages(
                 name,
                 vec![PageData {
-                    id: paper_rs::project::new_id(),
+                    id: sketch_rs::project::new_id(),
                     name: "Page 1".into(),
                     doc,
                     camera: None,
@@ -136,7 +136,7 @@ fn m1_autosave_survives_reopen_and_crash_temp_files() {
 fn m1_home_actions_rename_duplicate_trash() {
     let store = temp_store("actions");
     let dirs = populate(&store);
-    let mut hv = HomeView::load(&store, paper_rs::project::now_ms());
+    let mut hv = HomeView::load(&store, sketch_rs::project::now_ms());
     hv.actions = vec![
         HomeAction::Rename(dirs[0].clone(), "Q4 launch".into()),
         HomeAction::Duplicate(dirs[1].clone()),
@@ -156,7 +156,7 @@ fn m1_home_actions_rename_duplicate_trash() {
             _ => unreachable!(),
         }
     }
-    hv.refresh(&store, paper_rs::project::now_ms());
+    hv.refresh(&store, sketch_rs::project::now_ms());
     let mut names: Vec<String> = hv.entries.iter().map(|e| e.manifest.name.clone()).collect();
     names.sort();
     assert_eq!(
@@ -245,14 +245,14 @@ fn m2_copy_paste_between_pages_and_projects() {
     ed.selection = vec![id];
     key(
         &mut ed,
-        paper_rs::editor::Key::Char('c'),
-        paper_rs::editor::Modifiers::cmd(),
+        sketch_rs::editor::Key::Char('c'),
+        sketch_rs::editor::Modifiers::cmd(),
     );
     ed.add_page();
     key(
         &mut ed,
-        paper_rs::editor::Key::Char('v'),
-        paper_rs::editor::Modifiers::cmd(),
+        sketch_rs::editor::Key::Char('v'),
+        sketch_rs::editor::Modifiers::cmd(),
     );
     assert_eq!(ed.doc.nodes.len(), 1);
     let pasted = ed.doc.get(ed.selection[0]).unwrap();
@@ -270,8 +270,8 @@ fn m2_copy_paste_between_pages_and_projects() {
     assert!(ed.doc.nodes.is_empty());
     key(
         &mut ed,
-        paper_rs::editor::Key::Char('v'),
-        paper_rs::editor::Modifiers::cmd(),
+        sketch_rs::editor::Key::Char('v'),
+        sketch_rs::editor::Modifiers::cmd(),
     );
     assert_eq!(ed.doc.nodes.len(), 1);
     std::fs::remove_dir_all(&store.root).ok();
@@ -280,8 +280,8 @@ fn m2_copy_paste_between_pages_and_projects() {
 #[test]
 fn m2_pages_panel_screenshot() {
     let Some(g) = gpu() else { return };
-    let page = |name: &str, doc: paper_rs::model::Document| PageData {
-        id: paper_rs::project::new_id(),
+    let page = |name: &str, doc: sketch_rs::model::Document| PageData {
+        id: sketch_rs::project::new_id(),
         name: name.into(),
         doc,
         camera: None,
@@ -292,7 +292,7 @@ fn m2_pages_panel_screenshot() {
             page("Launch plan", demo::showcase().doc),
             page("Moodboard", demo::moodboard().doc),
             page("Flows", demo::flow().doc),
-            page("Archive", paper_rs::model::Document::default()),
+            page("Archive", sketch_rs::model::Document::default()),
         ],
         None,
     );

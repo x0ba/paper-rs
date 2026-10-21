@@ -1,36 +1,36 @@
-use paper_rs::app::Start;
-use paper_rs::editor::Editor;
-use paper_rs::io::{export, file, import, png, svg};
-use paper_rs::model::Color;
-use paper_rs::project::{MANIFEST, Store};
-use paper_rs::render::{frame, gpu::Headless};
-use paper_rs::session::Session;
-use paper_rs::ui::UiState;
-use paper_rs::ui::home::HomeView;
+use sketch_rs::app::Start;
+use sketch_rs::editor::Editor;
+use sketch_rs::io::{export, file, import, png, svg};
+use sketch_rs::model::Color;
+use sketch_rs::project::{MANIFEST, Store};
+use sketch_rs::render::{frame, gpu::Headless};
+use sketch_rs::session::Session;
+use sketch_rs::ui::UiState;
+use sketch_rs::ui::home::HomeView;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 const USAGE: &str = "\
-paper-rs — infinite canvas for planning, working and sketching
+Sketch: infinite canvas for planning, working and sketching
 
 USAGE:
-  paper-rs                                 open the projects home screen
-  paper-rs PROJECT_DIR                     open a project folder
-  paper-rs FILE.paper-rs                   open a paper-rs 0.1 document (not autosaved)
-  paper-rs --demo                          open the app with a sample board
-  paper-rs --screenshot OUT.png [--home | PROJECT|FILE|--demo] [--size WxH] [--scale S]
-                                           render the full UI headlessly to a PNG
-  paper-rs --export-png OUT.png PROJECT|FILE [--page N] [--scale S] [--transparent]
-  paper-rs --export-svg OUT.svg PROJECT|FILE [--page N]
-  paper-rs --export-pdf OUT.pdf PROJECT|FILE [--page N] [--frames | --all-pages]
-  paper-rs --export OUT PROJECT|FILE --format png|svg|pdf [--scope page|frames|all]
-                                           [--page N] [--scale S] [--transparent]
-                                           (frames/all with PNG/SVG write a folder)
-  paper-rs --import FILE                   create a project from .excalidraw, .svg or
-                                           .paper-rs and print its folder
-  paper-rs --help
+  sketch-rs                                 open the projects home screen
+  sketch-rs PROJECT_DIR                     open a project folder
+  sketch-rs FILE.sketch-rs                  open a Sketch 0.1 document (not autosaved)
+  sketch-rs --demo                          open the app with a sample board
+  sketch-rs --screenshot OUT.png [--home | PROJECT|FILE|--demo] [--size WxH] [--scale S]
+                                            render the full UI headlessly to a PNG
+  sketch-rs --export-png OUT.png PROJECT|FILE [--page N] [--scale S] [--transparent]
+  sketch-rs --export-svg OUT.svg PROJECT|FILE [--page N]
+  sketch-rs --export-pdf OUT.pdf PROJECT|FILE [--page N] [--frames | --all-pages]
+  sketch-rs --export OUT PROJECT|FILE --format png|svg|pdf [--scope page|frames|all]
+                                            [--page N] [--scale S] [--transparent]
+                                            (frames/all with PNG/SVG write a folder)
+  sketch-rs --import FILE                   create a project from .excalidraw, .svg or
+                                            .sketch-rs and print its folder
+  sketch-rs --help
 
-Projects live in ~/Documents/paper-rs (override with PAPER_RS_HOME).
+Projects live in ~/Documents/sketch-rs (override with SKETCH_RS_HOME).
 ";
 
 fn is_project(p: &std::path::Path) -> bool {
@@ -39,7 +39,7 @@ fn is_project(p: &std::path::Path) -> bool {
 
 fn load_editor(path: Option<&str>, demo: bool) -> Result<Editor, String> {
     if demo {
-        return Ok(paper_rs::demo::showcase());
+        return Ok(sketch_rs::demo::showcase());
     }
     let Some(p) = path else {
         return Ok(Editor::default());
@@ -128,7 +128,7 @@ fn run(args: Vec<String>) -> Result<(), String> {
         let mut st = UiState::default();
         if flag("--home") {
             let store = Store::open(Store::default_root()).map_err(|e| e.to_string())?;
-            st.home = Some(HomeView::load(&store, paper_rs::project::now_ms()));
+            st.home = Some(HomeView::load(&store, sketch_rs::project::now_ms()));
         }
         let (w, h) = match value("--size") {
             Some(s) => {
@@ -153,9 +153,9 @@ fn run(args: Vec<String>) -> Result<(), String> {
         );
         return Ok(());
     }
-    let page_doc = |input: Option<&str>| -> Result<paper_rs::model::Document, String> {
+    let page_doc = |input: Option<&str>| -> Result<sketch_rs::model::Document, String> {
         if flag("--demo") {
-            return Ok(paper_rs::demo::showcase().doc);
+            return Ok(sketch_rs::demo::showcase().doc);
         }
         let path = input.ok_or("missing input file")?;
         let pages = import::load_any(path.as_ref())?;
@@ -181,11 +181,11 @@ fn run(args: Vec<String>) -> Result<(), String> {
     }
     let export_with =
         |out: &str, format: export::Format, scope: export::Scope| -> Result<(), String> {
-            let pages: Vec<paper_rs::project::PageData> = if flag("--demo") {
-                vec![paper_rs::project::PageData {
+            let pages: Vec<sketch_rs::project::PageData> = if flag("--demo") {
+                vec![sketch_rs::project::PageData {
                     id: "demo".into(),
                     name: "Launch plan".into(),
-                    doc: paper_rs::demo::showcase().doc,
+                    doc: sketch_rs::demo::showcase().doc,
                     camera: None,
                 }]
             } else {
@@ -194,7 +194,7 @@ fn run(args: Vec<String>) -> Result<(), String> {
             if page >= pages.len() {
                 return Err(format!("no page {page}"));
             }
-            let refs: Vec<(&str, &paper_rs::model::Document)> =
+            let refs: Vec<(&str, &sketch_rs::model::Document)> =
                 pages.iter().map(|p| (p.name.as_str(), &p.doc)).collect();
             let spec = export::Spec {
                 format,
@@ -248,19 +248,19 @@ fn run(args: Vec<String>) -> Result<(), String> {
         let pages = match ext.as_str() {
             "excalidraw" | "json" => {
                 let t = std::fs::read_to_string(&p).map_err(|e| e.to_string())?;
-                vec![paper_rs::project::PageData {
-                    id: paper_rs::project::new_id(),
+                vec![sketch_rs::project::PageData {
+                    id: sketch_rs::project::new_id(),
                     name: "Page 1".into(),
-                    doc: paper_rs::io::excalidraw::import_scene(&t)?,
+                    doc: sketch_rs::io::excalidraw::import_scene(&t)?,
                     camera: None,
                 }]
             }
             "svg" => {
                 let t = std::fs::read_to_string(&p).map_err(|e| e.to_string())?;
-                vec![paper_rs::project::PageData {
-                    id: paper_rs::project::new_id(),
+                vec![sketch_rs::project::PageData {
+                    id: sketch_rs::project::new_id(),
                     name: "Page 1".into(),
-                    doc: paper_rs::io::svg_import::import_page(&t, &name)?,
+                    doc: sketch_rs::io::svg_import::import_page(&t, &name)?,
                     camera: None,
                 }]
             }
@@ -270,9 +270,9 @@ fn run(args: Vec<String>) -> Result<(), String> {
             .create_with_pages(&name, pages)
             .map_err(|e| e.to_string())?;
         for pg in proj.load_pages().map_err(|e| e.to_string())? {
-            paper_rs::assets::save_to_dir(
-                &proj.dir.join(paper_rs::project::ASSETS_DIR),
-                paper_rs::assets::used_by(&pg.doc),
+            sketch_rs::assets::save_to_dir(
+                &proj.dir.join(sketch_rs::project::ASSETS_DIR),
+                sketch_rs::assets::used_by(&pg.doc),
             )
             .map_err(|e| e.to_string())?;
         }
@@ -285,5 +285,5 @@ fn run(args: Vec<String>) -> Result<(), String> {
         Some(p) if is_project(p.as_ref()) => Start::Project(PathBuf::from(p)),
         Some(p) => Start::Scratch(Box::new(load_editor(Some(p), false)?)),
     };
-    paper_rs::app::run(start)
+    sketch_rs::app::run(start)
 }

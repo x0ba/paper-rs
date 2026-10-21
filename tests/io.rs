@@ -4,17 +4,17 @@
 mod common;
 
 use common::*;
-use paper_rs::editor::shortcuts::Action;
-use paper_rs::editor::{Editor, Key, Modifiers};
-use paper_rs::geom::{Rect, V2, v2};
-use paper_rs::io::clipboard::{Memory, Provider};
-use paper_rs::io::export::{self, Format, Scope, Spec};
-use paper_rs::model::{Color, ImageMode, Node, NodeId, NodeKind, Paint};
+use sketch_rs::editor::shortcuts::Action;
+use sketch_rs::editor::{Editor, Key, Modifiers};
+use sketch_rs::geom::{Rect, V2, v2};
+use sketch_rs::io::clipboard::{Memory, Provider};
+use sketch_rs::io::export::{self, Format, Scope, Spec};
+use sketch_rs::model::{Color, ImageMode, Node, NodeId, NodeKind, Paint};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 fn tmp(tag: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("paper-rs-io-{tag}-{:016x}", fastrand::u64(..)));
+    let d = std::env::temp_dir().join(format!("sketch-rs-io-{tag}-{:016x}", fastrand::u64(..)));
     std::fs::create_dir_all(&d).unwrap();
     d
 }
@@ -43,7 +43,7 @@ fn rasterize_pdf(pdf: &PathBuf, out_stem: &PathBuf, page: usize) -> Option<image
 }
 
 fn board() -> Editor {
-    let mut e = paper_rs::demo::showcase();
+    let mut e = sketch_rs::demo::showcase();
     // A gradient, an image fill and a multiply blend, so the PDF exercises every paint.
     let mut g = Node::new(
         NodeId(0),
@@ -58,7 +58,7 @@ fn board() -> Editor {
     let img = image::RgbaImage::from_fn(40, 30, |x, y| {
         image::Rgba([(x * 6) as u8, (y * 8) as u8, 180, 255])
     });
-    let asset = paper_rs::assets::register_rgba(&img);
+    let asset = sketch_rs::assets::register_rgba(&img);
     let mut r = Node::new(
         NodeId(0),
         NodeKind::Rect,
@@ -132,7 +132,7 @@ fn m6_png_and_svg_export_of_frames_and_all_pages() {
     );
     e.switch_page(0);
     let names: Vec<String> = e.pages.iter().map(|p| p.name.clone()).collect();
-    let pages: Vec<(&str, &paper_rs::model::Document)> = names
+    let pages: Vec<(&str, &sketch_rs::model::Document)> = names
         .iter()
         .enumerate()
         .map(|(i, n)| (n.as_str(), e.page_doc(i)))
@@ -180,7 +180,7 @@ fn m6_png_and_svg_export_of_frames_and_all_pages() {
 fn m6_import_excalidraw_and_svg_screenshots() {
     let Some(g) = gpu() else { return };
     let json = include_str!("fixtures/excalidraw/basic.excalidraw");
-    let doc = paper_rs::io::excalidraw::import_scene(json).unwrap();
+    let doc = sketch_rs::io::excalidraw::import_scene(json).unwrap();
     let mut e = editor(1200.0, 800.0);
     e.load(doc, None, None);
     e.viewport = v2(1200.0, 800.0);
@@ -195,7 +195,7 @@ fn m6_import_excalidraw_and_svg_screenshots() {
       <circle cx="80" cy="100" r="70" fill="url(#r)"/>
       <path d="M170 30 L280 30 L225 170 Z" fill="#4dabf7" stroke="#1c3d5a" stroke-width="6" stroke-linejoin="round"/>
       <text x="40" y="195" font-size="18" fill="#222">SVG import</text></svg>"##;
-    let doc = paper_rs::io::svg_import::import_page(svg, "logo").unwrap();
+    let doc = sketch_rs::io::svg_import::import_page(svg, "logo").unwrap();
     let mut e = editor(800.0, 560.0);
     e.load(doc, None, None);
     e.viewport = v2(800.0, 560.0);
@@ -316,7 +316,7 @@ fn m6_clipboard_between_apps_and_from_other_tools() {
 #[test]
 fn m6_cli_exports_pdf_and_imports_excalidraw() {
     let dir = tmp("cli");
-    let exe = env!("CARGO_BIN_EXE_paper-rs");
+    let exe = env!("CARGO_BIN_EXE_sketch-rs");
     let pdf = dir.join("demo.pdf");
     let st = std::process::Command::new(exe)
         .args(["--export-pdf"])
@@ -327,7 +327,7 @@ fn m6_cli_exports_pdf_and_imports_excalidraw() {
     assert!(st.success());
     assert!(std::fs::read(&pdf).unwrap().starts_with(b"%PDF-1.7"));
     let out = std::process::Command::new(exe)
-        .env("PAPER_RS_HOME", dir.join("home"))
+        .env("SKETCH_RS_HOME", dir.join("home"))
         .arg("--import")
         .arg(concat!(
             env!("CARGO_MANIFEST_DIR"),
@@ -342,7 +342,7 @@ fn m6_cli_exports_pdf_and_imports_excalidraw() {
     );
     let proj = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim().to_string());
     assert!(proj.join("project.json").is_file());
-    let p = paper_rs::project::Project::open(&proj).unwrap();
+    let p = sketch_rs::project::Project::open(&proj).unwrap();
     let pages = p.load_pages().unwrap();
     assert!(pages[0].doc.nodes.len() >= 8);
     // The fixture's image came along as a project asset.
@@ -352,5 +352,28 @@ fn m6_cli_exports_pdf_and_imports_excalidraw() {
             .unwrap_or(0)
             >= 1
     );
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn cli_reads_paper_rs_home_from_before_the_rename() {
+    let dir = tmp("old-home");
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_sketch-rs"))
+        .env_remove("SKETCH_RS_HOME")
+        .env("PAPER_RS_HOME", dir.join("home"))
+        .arg("--import")
+        .arg(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/excalidraw/basic.excalidraw"
+        ))
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let proj = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim().to_string());
+    assert!(proj.starts_with(dir.join("home")), "{}", proj.display());
     std::fs::remove_dir_all(dir).ok();
 }

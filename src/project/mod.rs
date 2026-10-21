@@ -1,6 +1,6 @@
 //! Local-first projects.
 //!
-//! Every project is a folder under the store root (`~/Documents/paper-rs/` by default):
+//! Every project is a folder under the store root (`~/Documents/sketch-rs/` by default):
 //!
 //! ```text
 //! <root>/<Project name>/
@@ -57,6 +57,21 @@ pub struct Project {
     pub manifest: Manifest,
 }
 
+/// Move the projects folder from `old` to `new` unless `new` already exists. If the move fails,
+/// keep using `old` so the projects don't disappear from the home screen.
+fn adopt_old_root(old: PathBuf, new: PathBuf) -> PathBuf {
+    if new.exists() || !old.is_dir() {
+        return new;
+    }
+    match std::fs::rename(&old, &new) {
+        Ok(()) => new,
+        Err(e) => {
+            log::warn!("could not move {} to {}: {e}", old.display(), new.display());
+            old
+        }
+    }
+}
+
 /// File-system safe folder name for a project name.
 pub fn folder_name(name: &str) -> String {
     let s: String = name
@@ -73,15 +88,16 @@ pub fn folder_name(name: &str) -> String {
 }
 
 impl Store {
-    /// `$PAPER_RS_HOME`, else `~/Documents/paper-rs`.
+    /// `$SKETCH_RS_HOME` (or `$PAPER_RS_HOME`), else `~/Documents/sketch-rs`. A
+    /// `~/Documents/paper-rs` folder from before the rename is moved there the first time.
     pub fn default_root() -> PathBuf {
-        if let Some(p) = std::env::var_os("PAPER_RS_HOME") {
+        if let Some(p) = crate::env_var("HOME") {
             return PathBuf::from(p);
         }
-        dirs::document_dir()
+        let docs = dirs::document_dir()
             .or_else(dirs::home_dir)
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("paper-rs")
+            .unwrap_or_else(|| PathBuf::from("."));
+        adopt_old_root(docs.join("paper-rs"), docs.join("sketch-rs"))
     }
 
     pub fn open(root: impl Into<PathBuf>) -> std::io::Result<Store> {
@@ -399,7 +415,7 @@ mod tests {
     use super::*;
 
     pub fn temp_store() -> Store {
-        let root = std::env::temp_dir().join(format!("paper-rs-store-{:016x}", fastrand::u64(..)));
+        let root = std::env::temp_dir().join(format!("sketch-rs-store-{:016x}", fastrand::u64(..)));
         Store::open(root).unwrap()
     }
 
@@ -474,5 +490,23 @@ mod tests {
         assert_eq!(folder_name("a/b\\c"), "a-b-c");
         assert_eq!(folder_name("  ..hidden "), "hidden");
         assert_eq!(folder_name(""), "Untitled");
+    }
+
+    #[test]
+    fn projects_folder_from_before_the_rename_moves_once() {
+        let base = std::env::temp_dir().join(format!("sketch-rs-root-{:016x}", fastrand::u64(..)));
+        let (old, new) = (base.join("paper-rs"), base.join("sketch-rs"));
+        std::fs::create_dir_all(old.join("Plan")).unwrap();
+        assert_eq!(adopt_old_root(old.clone(), new.clone()), new);
+        assert!(new.join("Plan").is_dir());
+        assert!(!old.exists());
+
+        std::fs::create_dir_all(&old).unwrap();
+        assert_eq!(adopt_old_root(old.clone(), new.clone()), new);
+        assert!(
+            old.exists(),
+            "an existing new folder wins and the old one is left alone"
+        );
+        std::fs::remove_dir_all(base).ok();
     }
 }

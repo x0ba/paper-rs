@@ -3,13 +3,13 @@
 mod common;
 
 use common::*;
-use paper_rs::editor::shortcuts::{self, Action};
-use paper_rs::editor::{Button, Editor, InputEvent, Key, Modifiers};
-use paper_rs::geom::{Rect, v2};
-use paper_rs::model::{Color, Node, NodeId, NodeKind};
-use paper_rs::render::frame;
-use paper_rs::ui::palette;
-use paper_rs::ui::{LayerDrop, UiState, drop_layer};
+use sketch_rs::editor::shortcuts::{self, Action};
+use sketch_rs::editor::{Button, Editor, InputEvent, Key, Modifiers};
+use sketch_rs::geom::{Rect, v2};
+use sketch_rs::model::{Color, Node, NodeId, NodeKind};
+use sketch_rs::render::frame;
+use sketch_rs::ui::palette;
+use sketch_rs::ui::{LayerDrop, UiState, drop_layer};
 
 fn rect(e: &mut Editor, r: Rect, c: Color, parent: Option<NodeId>) -> NodeId {
     let mut n = Node::new(NodeId(0), NodeKind::Rect, r);
@@ -52,7 +52,7 @@ fn layers_drop_above_below_and_into() {
 
 #[test]
 fn command_palette_finds_and_runs() {
-    let mut e = paper_rs::demo::showcase();
+    let mut e = sketch_rs::demo::showcase();
     let mut st = UiState::default();
     let r = palette::search(&e, &st, "zoom fit");
     assert!(
@@ -64,7 +64,7 @@ fn command_palette_finds_and_runs() {
     key(&mut e, Key::Char('k'), Modifiers::cmd());
     assert!(matches!(
         e.ui_events.as_slice(),
-        [paper_rs::editor::commands::UiEvent::TogglePalette]
+        [sketch_rs::editor::commands::UiEvent::TogglePalette]
     ));
     // Run "Select layer: Week plan".
     let r = palette::search(&e, &st, "select layer week");
@@ -158,7 +158,7 @@ fn editing_shortcuts() {
     e.selection = vec![a];
     key(&mut e, Key::Char('r'), Modifiers::cmd());
     key(&mut e, Key::Char('\\'), Modifiers::cmd());
-    use paper_rs::editor::commands::UiEvent;
+    use sketch_rs::editor::commands::UiEvent;
     assert_eq!(e.ui_events, vec![UiEvent::Rename(a), UiEvent::ToggleUi]);
     let _ = Button::Primary;
 }
@@ -175,7 +175,7 @@ fn shortcut_table_is_complete_and_conflict_free() {
 #[test]
 fn m5_palette_and_shortcuts_screenshots() {
     let Some(g) = gpu() else { return };
-    let mut e = paper_rs::demo::showcase();
+    let mut e = sketch_rs::demo::showcase();
     let mut st = UiState {
         project_name: "Launch plan".into(),
         save_state: "Saved".into(),
@@ -195,7 +195,7 @@ fn m5_palette_and_shortcuts_screenshots() {
     img.save(shot("milestone5_shortcuts.png")).unwrap();
     st.show_help = false;
     // Inspector for a selected frame, layers tree expanded.
-    let mut e = paper_rs::demo::showcase();
+    let mut e = sketch_rs::demo::showcase();
     e.selection = vec![e.doc.root[0]];
     let img = frame::capture(g, &mut e, &mut st, [1440.0, 900.0], 2.0, |ed| {
         ed.zoom_to_fit()

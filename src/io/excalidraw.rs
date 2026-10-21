@@ -4,7 +4,7 @@
 //! Field meanings, defaults and conversions follow Excalidraw's `restore.ts` and element
 //! types (Copyright (c) 2020 Excalidraw, MIT; see THIRD_PARTY.md and
 //! `analysis/EXCALIDRAW_NOTES.md` §1, §6, §8). Rotated shapes are baked into vector paths
-//! (paper-rs has no rotation); groups become group layers; frames clip their children.
+//! (Sketch has no rotation); groups become group layers; frames clip their children.
 
 use crate::geom::{Rect, V2, v2};
 use crate::history::{Recording, Tx};

@@ -3,15 +3,15 @@
 mod common;
 
 use common::*;
-use paper_rs::editor::vector_ops::BoolOp;
-use paper_rs::editor::{Button, Editor, InputEvent, Key, Modifiers, Tool};
-use paper_rs::geom::{Rect, V2, v2};
-use paper_rs::model::{
+use sketch_rs::editor::vector_ops::BoolOp;
+use sketch_rs::editor::{Button, Editor, InputEvent, Key, Modifiers, Tool};
+use sketch_rs::geom::{Rect, V2, v2};
+use sketch_rs::model::{
     Align, AutoLayout, BlendMode, Color, Constraint, Direction, ImageMode, Node, NodeId, NodeKind,
     Paint, Sizing,
 };
-use paper_rs::render::frame;
-use paper_rs::ui::UiState;
+use sketch_rs::render::frame;
+use sketch_rs::ui::UiState;
 
 fn rect(ed: &mut Editor, r: Rect, c: Color, parent: Option<NodeId>) -> NodeId {
     let mut n = Node::new(NodeId(0), NodeKind::Rect, r);
@@ -102,7 +102,7 @@ fn auto_layout_hugs_reorders_and_fills() {
     assert!((fr.w - total).abs() < 1e-6, "{fr:?} vs {total}");
     // Growing a child relayouts its siblings.
     e.selection = vec![k[0]];
-    paper_rs::ui::inspector::apply(&mut e, "width", &[k[0]], |n| n.rect.w = 100.0);
+    sketch_rs::ui::inspector::apply(&mut e, "width", &[k[0]], |n| n.rect.w = 100.0);
     assert_eq!(
         e.doc.get(k[1]).unwrap().rect.x,
         l.padding[3] + 100.0 + l.gap
@@ -115,11 +115,11 @@ fn auto_layout_hugs_reorders_and_fills() {
     assert_eq!(e.doc.get(f).unwrap().children, vec![k[1], k[2], k[0]]);
     assert!(e.doc.get(k[0]).unwrap().rect.x > e.doc.get(k[2]).unwrap().rect.x);
     // Fill: one child takes the remaining width of a fixed frame.
-    paper_rs::ui::inspector::apply(&mut e, "layout", &[f], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "layout", &[f], |n| {
         n.layout_child.sizing = [Sizing::Fixed, Sizing::Fixed];
         n.rect.w = 800.0;
     });
-    paper_rs::ui::inspector::apply(&mut e, "layout", &[k[1]], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "layout", &[k[1]], |n| {
         n.layout_child.sizing[0] = Sizing::Fill
     });
     let r = |i: usize| e.doc.get(k[i]).unwrap().rect;
@@ -136,10 +136,10 @@ fn constraints_follow_frame_resize_and_cmd_ignores_them() {
     let f = frame_node(&mut e, Rect::new(100.0, 100.0, 400.0, 300.0), None);
     let right = rect(&mut e, Rect::new(340.0, 20.0, 40.0, 40.0), RED, Some(f));
     let stretch = rect(&mut e, Rect::new(20.0, 240.0, 360.0, 40.0), BLUE, Some(f));
-    paper_rs::ui::inspector::apply(&mut e, "layout", &[right], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "layout", &[right], |n| {
         n.layout_child.constraints.h = Constraint::Max
     });
-    paper_rs::ui::inspector::apply(&mut e, "layout", &[stretch], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "layout", &[stretch], |n| {
         n.layout_child.constraints.h = Constraint::Stretch;
         n.layout_child.constraints.v = Constraint::Max;
     });
@@ -169,7 +169,7 @@ fn components_sync_instances_and_respect_overrides() {
     let mut e = editor(1200.0, 900.0);
     let f = frame_node(&mut e, Rect::new(0.0, 0.0, 200.0, 60.0), None);
     let label = e.add_node(
-        paper_rs::demo::text_node("Button", 16.0, v2(20.0, 20.0), Color::WHITE),
+        sketch_rs::demo::text_node("Button", 16.0, v2(20.0, 20.0), Color::WHITE),
         Some(f),
     );
     let bg = rect(&mut e, Rect::new(0.0, 0.0, 200.0, 60.0), BLUE, Some(f));
@@ -216,12 +216,12 @@ fn components_sync_instances_and_respect_overrides() {
     };
     // Override the fill of instance 2's background.
     let b2 = inst_bg(&e, i2);
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[b2], |n| n.style.set_fill(Some(RED)));
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[b2], |n| n.style.set_fill(Some(RED)));
     // Edit the main component: fill and corner radius.
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[bg], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[bg], |n| {
         n.style.set_fill(Some(Color::rgb(0, 160, 90)))
     });
-    paper_rs::ui::inspector::apply(&mut e, "radius", &[bg], |n| n.style.corner_radius = 12.0);
+    sketch_rs::ui::inspector::apply(&mut e, "radius", &[bg], |n| n.style.corner_radius = 12.0);
     let n1 = e.doc.get(inst_bg(&e, i1)).unwrap();
     assert_eq!(
         n1.style.fill(),
@@ -236,7 +236,7 @@ fn components_sync_instances_and_respect_overrides() {
     );
     // Text override on one instance.
     let l1 = inst_label(&e, i1);
-    paper_rs::ui::inspector::apply(&mut e, "text", &[l1], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "text", &[l1], |n| {
         if let NodeKind::Text { text, .. } = &mut n.kind {
             *text = "Buy now".into();
         }
@@ -272,7 +272,7 @@ fn components_sync_instances_and_respect_overrides() {
     e.selection = vec![i1];
     e.detach_instance();
     assert!(!e.is_instance_root(i1));
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[bg], |n| n.style.set_fill(Some(BLUE)));
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[bg], |n| n.style.set_fill(Some(BLUE)));
     assert_ne!(
         e.doc
             .get(e.doc.get(i1).unwrap().children[1])
@@ -287,7 +287,7 @@ fn components_sync_instances_and_respect_overrides() {
 #[test]
 fn pen_draws_curves_and_points_can_be_edited() {
     let mut e = editor(1000.0, 800.0);
-    e.run(paper_rs::editor::shortcuts::Action::Tool(Tool::Pen));
+    e.run(sketch_rs::editor::shortcuts::Action::Tool(Tool::Pen));
     click(&mut e, v2(100.0, 100.0), 0.0);
     // Click-drag: a smooth point.
     ev_drag(&mut e, v2(300.0, 100.0), v2(350.0, 160.0), 500.0, true);
@@ -343,13 +343,13 @@ fn booleans_and_flatten() {
         "subtract keeps the bottom layer's style"
     );
     assert_eq!(wr(&e, id), Rect::new(0.0, 0.0, 100.0, 100.0));
-    assert!(paper_rs::editor::hit::node_contains(
+    assert!(sketch_rs::editor::hit::node_contains(
         &e.doc,
         id,
         v2(10.0, 10.0),
         1.0
     ));
-    assert!(!paper_rs::editor::hit::node_contains(
+    assert!(!sketch_rs::editor::hit::node_contains(
         &e.doc,
         id,
         v2(90.0, 90.0),
@@ -370,7 +370,7 @@ fn booleans_and_flatten() {
     assert_eq!(wr(&e, e.selection[0]), Rect::new(0.0, 0.0, 150.0, 150.0));
     // Flatten text into outlines.
     let t = e.add_node(
-        paper_rs::demo::text_node("Hi", 40.0, v2(300.0, 300.0), Color::INK),
+        sketch_rs::demo::text_node("Hi", 40.0, v2(300.0, 300.0), Color::INK),
         None,
     );
     e.selection = vec![t];
@@ -382,7 +382,7 @@ fn booleans_and_flatten() {
 fn rich_text_ranges_and_smart_guides() {
     let mut e = editor(1000.0, 800.0);
     let t = e.add_node(
-        paper_rs::demo::text_node("Hello world", 20.0, v2(100.0, 100.0), Color::INK),
+        sketch_rs::demo::text_node("Hello world", 20.0, v2(100.0, 100.0), Color::INK),
         None,
     );
     e.start_text_edit(t, None);
@@ -431,7 +431,7 @@ fn rich_text_ranges_and_smart_guides() {
     assert!(
         e.guides
             .iter()
-            .any(|g| matches!(g, paper_rs::editor::snap::Guide::Gap { .. })),
+            .any(|g| matches!(g, sketch_rs::editor::snap::Guide::Gap { .. })),
         "{:?}",
         e.guides
     );
@@ -457,7 +457,7 @@ fn rich_text_ranges_and_smart_guides() {
         time_ms: 500.0,
     });
     assert!(
-        matches!(e.measures.first(), Some(paper_rs::editor::snap::Guide::Gap { a, b }) if (b.x - a.x - 100.0).abs() < 1e-9)
+        matches!(e.measures.first(), Some(sketch_rs::editor::snap::Guide::Gap { a, b }) if (b.x - a.x - 100.0).abs() < 1e-9)
     );
 }
 
@@ -506,11 +506,11 @@ pub fn figma_board() -> Editor {
     // Component: a button with auto layout.
     let btn = frame_node(&mut e, Rect::new(0.0, 0.0, 10.0, 10.0), None);
     let label = e.add_node(
-        paper_rs::demo::text_node("Get started", 16.0, v2(0.0, 0.0), Color::WHITE),
+        sketch_rs::demo::text_node("Get started", 16.0, v2(0.0, 0.0), Color::WHITE),
         Some(btn),
     );
     let _ = label;
-    paper_rs::ui::inspector::apply(&mut e, "layout", &[btn], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "layout", &[btn], |n| {
         n.name = "Button".into();
         n.component = true;
         n.style.fills = vec![Paint::linear(
@@ -539,18 +539,18 @@ pub fn figma_board() -> Editor {
     let i1 = e.create_instance(btn, v2(60.0, 140.0)).unwrap();
     let i2 = e.create_instance(btn, v2(240.0, 140.0)).unwrap();
     let i2_label = e.doc.get(i2).unwrap().children[0];
-    paper_rs::ui::inspector::apply(&mut e, "text", &[i2_label], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "text", &[i2_label], |n| {
         if let NodeKind::Text { text, .. } = &mut n.kind {
             *text = "Upgrade →".into();
         }
     });
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[i2], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[i2], |n| {
         n.style.set_fill(Some(Color::rgb(0x1c, 0x1c, 0x1e)))
     });
     let _ = i1;
     // Card frame with auto layout (vertical) and constraints.
     let card = frame_node(&mut e, Rect::new(480.0, 40.0, 320.0, 380.0), None);
-    paper_rs::ui::inspector::apply(&mut e, "layout", &[card], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "layout", &[card], |n| {
         n.name = "Card".into();
         n.style.corner_radius = 20.0;
         n.style.stroke = Some(Color::rgb(0xe2, 0xe2, 0xe8));
@@ -575,9 +575,9 @@ pub fn figma_board() -> Editor {
             255,
         ]);
     }
-    let asset = paper_rs::assets::register_rgba(&img);
+    let asset = sketch_rs::assets::register_rgba(&img);
     let photo = rect(&mut e, Rect::new(0.0, 0.0, 280.0, 150.0), RED, Some(card));
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[photo], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[photo], |n| {
         n.name = "Photo".into();
         n.style.corner_radius = 12.0;
         n.style.fills = vec![Paint::Image {
@@ -588,7 +588,7 @@ pub fn figma_board() -> Editor {
         n.layout_child.sizing[0] = Sizing::Fill;
     });
     let title = e.add_node(
-        paper_rs::demo::text_node(
+        sketch_rs::demo::text_node(
             "Rich text: bold, italic, colour",
             18.0,
             v2(0.0, 0.0),
@@ -614,7 +614,7 @@ pub fn figma_board() -> Editor {
     e.style_text("color", |s| s.color = Some(Color::rgb(0xe8, 0x4a, 0x5f)));
     e.end_text_edit();
     let body = e.add_node(
-        paper_rs::demo::text_node(
+        sketch_rs::demo::text_node(
             "Auto layout stacks these children vertically with a 14 px gap.",
             14.0,
             v2(0.0, 0.0),
@@ -622,7 +622,7 @@ pub fn figma_board() -> Editor {
         ),
         Some(card),
     );
-    paper_rs::ui::inspector::apply(&mut e, "layout", &[body, title], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "layout", &[body, title], |n| {
         n.layout_child.sizing[0] = Sizing::Fill;
         if let NodeKind::Text { auto_width, .. } = &mut n.kind {
             *auto_width = false;
@@ -654,7 +654,7 @@ pub fn figma_board() -> Editor {
     poly.style.stroke = Some(Color::rgb(0x0f, 0x5e, 0x3f));
     poly.style.stroke_width = 4.0;
     poly.style.dash = vec![10.0, 6.0];
-    poly.style.join = paper_rs::model::Join::Round;
+    poly.style.join = sketch_rs::model::Join::Round;
     e.add_node(poly, None);
     let c1 = e.add_node(
         Node::new(
@@ -672,10 +672,10 @@ pub fn figma_board() -> Editor {
         ),
         None,
     );
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[c1], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[c1], |n| {
         n.style.set_fill(Some(Color::rgb(0x2f, 0x9b, 0xf3)))
     });
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[c2], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[c2], |n| {
         n.style.set_fill(Some(Color::rgb(0xff, 0x5c, 0x8a)));
         n.style.blend = BlendMode::Multiply;
     });
@@ -696,13 +696,13 @@ pub fn figma_board() -> Editor {
         ),
         None,
     );
-    paper_rs::ui::inspector::apply(&mut e, "fill", &[outer], |n| {
+    sketch_rs::ui::inspector::apply(&mut e, "fill", &[outer], |n| {
         n.style.set_fill(Some(Color::rgb(0x7c, 0x4d, 0xff)))
     });
     e.selection = vec![outer, inner];
     e.boolean(BoolOp::Subtract);
     // Pen path.
-    e.run(paper_rs::editor::shortcuts::Action::Tool(Tool::Pen));
+    e.run(sketch_rs::editor::shortcuts::Action::Tool(Tool::Pen));
     let s = |p: V2| e.camera.world_to_screen(p);
     let (p0, p1, p2) = (s(v2(60.0, 330.0)), s(v2(200.0, 300.0)), s(v2(380.0, 380.0)));
     click(&mut e, p0, 0.0);
@@ -710,10 +710,10 @@ pub fn figma_board() -> Editor {
     click(&mut e, p2, 900.0);
     key(&mut e, Key::Enter, Modifiers::NONE);
     if let Some(&pen) = e.selection.first() {
-        paper_rs::ui::inspector::apply(&mut e, "stroke", &[pen], |n| {
+        sketch_rs::ui::inspector::apply(&mut e, "stroke", &[pen], |n| {
             n.style.stroke = Some(Color::rgb(0xe8, 0x4a, 0x5f));
             n.style.stroke_width = 4.0;
-            n.style.cap = paper_rs::model::Cap::Round;
+            n.style.cap = sketch_rs::model::Cap::Round;
         });
     }
     e.selection = vec![card];
@@ -739,7 +739,7 @@ fn m3_figma_core_screenshot() {
     let mut e = figma_board();
     e.selection.clear();
     e.viewport = v2(1400.0, 520.0);
-    e.camera = paper_rs::geom::Camera {
+    e.camera = sketch_rs::geom::Camera {
         pan: v2(20.0, 20.0),
         zoom: 1.0,
     };
@@ -756,7 +756,7 @@ fn m3_figma_core_screenshot() {
     // Ring: the hole shows the canvas.
     assert!(close(
         at(v2(1225.0, 335.0)),
-        paper_rs::render::scene::CANVAS_BG,
+        sketch_rs::render::scene::CANVAS_BG,
         6
     ));
     // Radial gradient star: center is yellow, tips are orange.

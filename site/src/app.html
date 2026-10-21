@@ -1,21 +1,22 @@
 <!doctype html>
+<!-- From the terminal-rs download page (github.com/michaelshimeles/terminal-rs, site/src/app.html). -->
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
-		<meta name="color-scheme" content="light dark" />
-		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f4f6" />
-		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#161618" />
+		<meta name="theme-color" content="#0a0a0b" />
 		<script>
 			try {
-				const theme = localStorage.getItem('theme');
-				if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+				if (localStorage.getItem('theme') === 'light') {
+					document.documentElement.dataset.theme = 'light';
+					document.querySelector('meta[name="theme-color"]').content = '#f5f5f7';
+				}
 			} catch {}
 		</script>
 		%sveltekit.head%
 	</head>
-	<body data-sveltekit-preload-data="hover">
+	<body>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

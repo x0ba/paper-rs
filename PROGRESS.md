@@ -4,7 +4,7 @@ Last updated: 2026-10-11.
 
 ## Phase 3: local-first design and whiteboard tool
 
-Goal: grow paper-rs into a Paper / Figma / Excalidraw-class tool. Figma and Paper are studied
+Goal: grow Sketch into a Paper / Figma / Excalidraw-class tool. Figma and Paper are studied
 clean-room (behavior only, `analysis/FIGMA_NOTES.md`, `analysis/PAPER_ARCHITECTURE.md`).
 Excalidraw is MIT and studied from source (`analysis/EXCALIDRAW_NOTES.md`); ported algorithms
 are credited in `THIRD_PARTY.md`.
@@ -18,7 +18,7 @@ are credited in `THIRD_PARTY.md`.
 | P4: Excalidraw core | ✅ done | `src/render/rough.rs`, `src/connector.rs`, `src/editor/whiteboard.rs`, `src/library.rs`, `src/ui/library.rs`, `tests/excalidraw.rs`, `milestone4_whiteboard.png`, `THIRD_PARTY.md` |
 | P5: inspector, layers drag-reorder, command palette, shortcuts | ✅ done | `src/ui/{inspector,palette}.rs`, `src/ui/mod.rs` (layers drag, help), `src/editor/{commands,shortcuts}.rs`, `src/macos.rs`, `tests/workflow.rs`, `milestone5_palette.png`, `milestone5_shortcuts.png`, `milestone5_inspector.png` |
 | P6: import/export (PNG/SVG/PDF, .excalidraw, SVG), cross-project paste | ✅ done | `src/io/{pdf,export,excalidraw,svg_import,clipboard}.rs`, inspector Export section, CLI `--export*`/`--import`, `tests/io.rs`, `milestone6_*.png` |
-| P7: MCP server for AI agents (Paper-compatible tools, HTTP + stdio bridge) | ✅ done on Linux; ⏳ Mac run pending (steps below) | `analysis/paper-mcp.md`, `src/mcp/`, `src/bin/paper-rs-mcp.rs`, `tests/mcp.rs`, `milestone7_mcp.png`, `milestone7_mcp_live_xvfb.png` |
+| P7: MCP server for AI agents (Paper-compatible tools, HTTP + stdio bridge) | ✅ done on Linux; ⏳ Mac run pending (steps below) | `analysis/paper-mcp.md`, `src/mcp/`, `src/bin/sketch-rs-mcp.rs`, `tests/mcp.rs`, `milestone7_mcp.png`, `milestone7_mcp_live_xvfb.png` |
 
 ### P7 notes: MCP server
 
@@ -28,11 +28,11 @@ are credited in `THIRD_PARTY.md`.
   write path is `write_html` (HTML + inline CSS → layers) and `update_styles` (CSS maps).
   Studied with REA (behaviour only; raw dumps in gitignored `analysis/raw/`).
 * **Server** (`src/mcp/server.rs`, rmcp 3.5): streamable HTTP on `127.0.0.1:29980/mcp`
-  (`PAPER_RS_MCP_PORT`, `PAPER_RS_MCP=0` to disable), on its own Tokio thread. Calls are sent
+  (`SKETCH_RS_MCP_PORT`, `SKETCH_RS_MCP=0` to disable), on its own Tokio thread. Calls are sent
   to the winit loop (`UserEvent::Mcp`) and run on the UI thread via `mcp::exec`, each as one
   `Editor::edit` transaction (one undo step, live repaint, autosave). Edits to other pages go
   to that page's own document and history (`Editor::with_page`) without switching the view.
-* **Bridge** (`paper-rs-mcp`): rmcp stdio server that lists tools offline and relays calls to
+* **Bridge** (`sketch-rs-mcp`): rmcp stdio server that lists tools offline and relays calls to
   the app over HTTP, reconnecting after app restarts.
 * **Tools** (`src/mcp/tools.rs`): Paper's names and argument shapes where there is an
   equivalent (see README), plus `create_shape`, `select_nodes`, `undo`, `redo`.
@@ -51,24 +51,24 @@ are credited in `THIRD_PARTY.md`.
   `/Users/Shared/projects/paper-rs` on the Mac:
 
   ```sh
-  export CARGO_TARGET_DIR=~/.cache/paper-rs-target   # keep build output out of the synced tree
+  export CARGO_TARGET_DIR=~/.cache/sketch-rs-target   # keep build output out of the synced tree
   cargo build --release
-  $CARGO_TARGET_DIR/release/paper-rs &               # app; log says "MCP server listening on http://127.0.0.1:29980/mcp"
+  $CARGO_TARGET_DIR/release/sketch-rs &               # app; log says "MCP server listening on http://127.0.0.1:29980/mcp"
   curl -s http://127.0.0.1:29980/x                   # → {"status":"not_found",...The MCP endpoint is /mcp."}
 
   # HTTP client
-  claude mcp add --transport http --scope user paper-rs http://127.0.0.1:29980/mcp
-  claude -p "Use the paper-rs MCP tools: create_file 'Mac check', open_file it, create a 480x320 \
+  claude mcp add --transport http --scope user sketch http://127.0.0.1:29980/mcp
+  claude -p "Use the Sketch MCP tools: create_file 'Mac check', open_file it, create a 480x320 \
     artboard 'Hello', and write_html a heading 'Hello from the Mac' into it." \
-    --allowedTools "mcp__paper-rs__*"
+    --allowedTools "mcp__sketch__*"
   # stdio client (through the bridge)
-  claude mcp remove paper-rs --scope user
-  claude mcp add --scope user paper-rs -- $CARGO_TARGET_DIR/release/paper-rs-mcp
-  claude -p "In paper-rs, add a yellow sticky note saying 'stdio works' next to the Hello artboard." \
-    --allowedTools "mcp__paper-rs__*"
+  claude mcp remove sketch --scope user
+  claude mcp add --scope user sketch -- $CARGO_TARGET_DIR/release/sketch-rs-mcp
+  claude -p "In Sketch, add a yellow sticky note saying 'stdio works' next to the Hello artboard." \
+    --allowedTools "mcp__sketch__*"
   # Codex works the same way:
-  #   codex mcp add paper-rs --url http://127.0.0.1:29980/mcp
-  #   codex mcp add paper-rs -- $CARGO_TARGET_DIR/release/paper-rs-mcp
+  #   codex mcp add sketch --url http://127.0.0.1:29980/mcp
+  #   codex mcp add sketch -- $CARGO_TARGET_DIR/release/sketch-rs-mcp
   ```
 
   Done when the "Mac check" project is open in the window with the "Hello" frame and its
@@ -94,7 +94,7 @@ are credited in `THIRD_PARTY.md`.
   style); `.excalidrawlib` v1/v2 into the library.
 * **SVG import** (`io/svg_import.rs`, usvg): paths with transforms, fills (solid, linear,
   radial), strokes, opacity, embedded raster images, nested SVG and text outlined with Inter.
-* **Clipboard** (`io/clipboard.rs`): copy writes a `paper-rs/clipboard` JSON payload with
+* **Clipboard** (`io/clipboard.rs`): copy writes a `sketch-rs/clipboard` JSON payload with
   image bytes to the system clipboard (arboard), so layers paste between pages, projects,
   windows and restarts; paste also takes Excalidraw JSON, SVG markup, images and plain text.
   Our own last copy pastes from the internal clipboard (offset on the same page).
@@ -148,7 +148,7 @@ are credited in `THIRD_PARTY.md`.
 * Number keys 1–0 select tools like Excalidraw (1 select … 0 eraser).
 * Deferred depth: Excalidraw's dynamic-AABB "side hack" in elbow routing, arrow labels and
   text bound inside shapes, multi-point arrows by clicking, freedraw with perfect-freehand
-  (paper-rs keeps its own ink), rough rendering of text/ink, collaboration.
+  (Sketch keeps its own ink), rough rendering of text/ink, collaboration.
 
 ### P3 notes
 
@@ -188,14 +188,14 @@ are credited in `THIRD_PARTY.md`.
 
 ### P1 notes
 
-* Projects live in `~/Documents/paper-rs/<name>/` (`PAPER_RS_HOME` overrides): `project.json`
+* Projects live in `~/Documents/sketch-rs/<name>/` (`SKETCH_RS_HOME` overrides): `project.json`
   (manifest: id, name, created/modified, ordered pages, active page), `pages/<id>.json`, and
   `thumbnail.png`. Deleting moves the folder to `.trash/` with a `trashinfo.json`, restorable from
   the Trash view.
 * Every write is temp file + fsync + rename + directory fsync (`io::atomic`). Stale temp files
   from a crash are removed when the project opens.
 * Formats carry `format` + `version`; loading runs a chain of `Value -> Value` migrations.
-  paper-rs 0.1 `.paper-rs` files are page format v1 and migrate to v2 (tested).
+  Sketch 0.1 `.sketch-rs` files are page format v1 and migrate to v2 (tested).
 * Autosave: changes are written 1 s after the first unsaved edit (bounded latency even while
   editing, never during a drag), on page switch, when leaving the project and on quit. The event
   loop sleeps until the autosave deadline, so idle CPU stays at zero. Thumbnails refresh at most
@@ -216,7 +216,7 @@ are credited in `THIRD_PARTY.md`.
   octave ~140 ms, one edited node re-tessellates one node, panning uploads nothing.
 * Not yet run on Mac hardware (no Mac available to this session); see README Known gaps.
 
-## Phase 2 (paper-rs 0.1) record
+## Phase 2 (Sketch 0.1) record
 
 | Phase / milestone | Status | Evidence |
 |---|---|---|
@@ -227,7 +227,7 @@ are credited in `THIRD_PARTY.md`.
 | M3: shapes, frames, text | ✅ done | scenario tests, `m3_shapes_frames_and_text`, `m3_*.png` |
 | M4: select/move/resize, multi-select, snapping | ✅ done | scenario tests, `m4_select_move_resize_snap`, `m4_*.png` |
 | M5: layers panel, undo/redo | ✅ done | `history.rs` tests, `undo_redo_round_trips_a_whole_session`, `m5_layers_and_undo_redo`, `m5_*.png` |
-| M6: save/load `.paper-rs`, PNG/SVG export | ✅ done | `io/*` tests, `m6_save_load_and_export`, `m6_svg_export_matches_gpu_render`, `m6_*` |
+| M6: save/load `.sketch-rs`, PNG/SVG export | ✅ done | `io/*` tests, `m6_save_load_and_export`, `m6_svg_export_matches_gpu_render`, `m6_*` |
 | M7: keyboard shortcuts | ✅ done | `editor/shortcuts.rs` (conflict test), README table, in-app `?` help |
 | README (build/run, parity table, gaps) | ✅ done | `README.md` |
 

@@ -1,9 +1,9 @@
-# paper-rs
+# Sketch
 
 A native Rust infinite canvas for planning, working and sketching. It is modeled on the
 behavior of [Paper](https://paper.design) and built clean-room on `wgpu` + `winit` + `egui`.
 
-![paper-rs main window](docs/screenshots/app_demo.png)
+![Sketch main window](docs/screenshots/app_demo.png)
 
 A local-first design and whiteboard tool. Projects are folders of pages; each page is an
 infinite canvas with frames, groups, components and instances, auto layout and constraints,
@@ -16,25 +16,29 @@ library. Everything autosaves, and exports to PNG, SVG and PDF; Excalidraw files
 
 > **Clean-room note.** `analysis/PAPER_ARCHITECTURE.md` documents how Paper Desktop 0.5.15 is
 > put together, from a licensed install. The Electron package turned out to be a thin shell
-> around the hosted web editor. paper-rs re-implements *behavior* only. No Paper code,
+> around the hosted web editor. Sketch re-implements *behavior* only. No Paper code,
 > shaders, icons, fonts or assets are used or committed. The UI and canvas text use
 > [Inter](https://rsms.me/inter/) 4.1 (SIL OFL 1.1), bundled in `assets/fonts/`.
 
 ## Reverse-engineered origin
 
-paper-rs is an independent, clean-room-style reimplementation. It was reverse engineered from
+Sketch is an independent, clean-room-style reimplementation. It was reverse engineered from
 [Paper](https://paper.design) by studying the behavior of the Paper desktop app with
 [REA](https://github.com/morluto/rea) and Claude Code. It is not affiliated with or endorsed by
 Paper. No original Paper code or assets are included in this repository.
 
 ## Projects
 
-paper-rs opens on a **home screen** of your projects (recents grid with thumbnails, New, Import,
+Sketch opens on a **home screen** of your projects (recents grid with thumbnails, New, Import,
 and Rename / Duplicate / Move to Trash from each card's ⋯ menu or right-click; restore from
-Trash). Each project is a plain folder in `~/Documents/paper-rs/<name>/` holding `project.json`
+Trash). Each project is a plain folder in `~/Documents/sketch-rs/<name>/` holding `project.json`
 and one JSON file per page in `pages/`. Work is autosaved about a second after each change with
 crash-safe atomic writes; files are versioned and older versions migrate on load. Set
-`PAPER_RS_HOME` to use another folder.
+`SKETCH_RS_HOME` to use another folder.
+
+Sketch used to be called paper-rs. On first launch it moves `~/Documents/paper-rs` to
+`~/Documents/sketch-rs`, and it still opens `.paper-rs` files and older libraries. The old
+`PAPER_RS_*` environment variables still work when the matching `SKETCH_RS_*` one isn't set.
 
 A project has any number of **pages** (Pages list at the top of the left sidebar: + to add,
 double-click to rename, right-click to duplicate or delete, drag to reorder). Each page is its
@@ -47,10 +51,10 @@ You need Rust 1.95 or newer (`rust-version` in `Cargo.toml`; the latest stable i
 
 ```sh
 cargo build --release
-./target/release/paper-rs                  # projects home screen
-./target/release/paper-rs --demo           # sample planning board (not saved)
-./target/release/paper-rs ~/Documents/paper-rs/Plan   # open a project folder
-./target/release/paper-rs board.paper-rs   # open a paper-rs 0.1 document
+./target/release/sketch-rs                  # projects home screen
+./target/release/sketch-rs --demo           # sample planning board (not saved)
+./target/release/sketch-rs ~/Documents/sketch-rs/Plan   # open a project folder
+./target/release/sketch-rs board.sketch-rs   # open a Sketch 0.1 document
 ```
 
 ### macOS
@@ -58,7 +62,7 @@ cargo build --release
 ```sh
 xcode-select --install          # command line tools (linker)
 curl https://sh.rustup.rs -sSf | sh
-cargo build --release && ./target/release/paper-rs --demo
+cargo build --release && ./target/release/sketch-rs --demo
 ```
 
 It uses Metal through wgpu. Shortcuts use ⌘, and trackpad pinch zooms. The macOS target is
@@ -70,7 +74,7 @@ Mac hardware yet (see Known gaps).
 ```sh
 # Debian/Ubuntu runtime libraries (usually already present on desktops)
 sudo apt install libxkbcommon-x11-0 libxcb-xkb1 libvulkan1 mesa-vulkan-drivers
-cargo build --release && ./target/release/paper-rs --demo
+cargo build --release && ./target/release/sketch-rs --demo
 ```
 
 It runs on X11 and Wayland through Vulkan, or GL as a fallback. Shortcuts use Ctrl. File
@@ -81,65 +85,65 @@ dialogs use the XDG desktop portal.
 No display is needed. wgpu renders offscreen, through Mesa lavapipe when there is no GPU:
 
 ```sh
-paper-rs --screenshot ui.png --demo --size 1440x900 --scale 2      # full UI
-paper-rs --screenshot home.png --home                              # projects home screen
-paper-rs --export-png out.png PROJECT_DIR --page 0 --scale 2 [--transparent]
-paper-rs --export-svg out.svg PROJECT_DIR
-paper-rs --export-pdf out.pdf PROJECT_DIR --frames                 # one PDF page per frame
-paper-rs --export out_dir PROJECT_DIR --format png --scope frames  # a folder of PNGs
-paper-rs --import board.excalidraw                                 # new project, prints its folder
+sketch-rs --screenshot ui.png --demo --size 1440x900 --scale 2      # full UI
+sketch-rs --screenshot home.png --home                              # projects home screen
+sketch-rs --export-png out.png PROJECT_DIR --page 0 --scale 2 [--transparent]
+sketch-rs --export-svg out.svg PROJECT_DIR
+sketch-rs --export-pdf out.pdf PROJECT_DIR --frames                 # one PDF page per frame
+sketch-rs --export out_dir PROJECT_DIR --format png --scope frames  # a folder of PNGs
+sketch-rs --import board.excalidraw                                 # new project, prints its folder
 ```
 
 ## AI agents (MCP)
 
 ![A sign-in screen written by an agent through write_html](docs/screenshots/milestone7_mcp.png)
 
-paper-rs serves the [Model Context Protocol](https://modelcontextprotocol.io) while it runs, so
+Sketch serves the [Model Context Protocol](https://modelcontextprotocol.io) while it runs, so
 agents such as Claude Code and Codex can read and design on the open canvas, the way Paper's
 own MCP server works (behaviour notes: `analysis/paper-mcp.md`). Every tool call runs through
 the editor like a user edit: one undo step per call, and the window repaints immediately.
 
 * **Streamable HTTP** (built into the app): `http://127.0.0.1:29980/mcp`. Paper uses 29979, so
   both can run. Loopback only; requests from browsers (with an `Origin` header) and foreign
-  `Host` headers are rejected. `PAPER_RS_MCP_PORT=NNNN` changes the port; `PAPER_RS_MCP=0`
+  `Host` headers are rejected. `SKETCH_RS_MCP_PORT=NNNN` changes the port; `SKETCH_RS_MCP=0`
   turns the server off.
-* **stdio**: `paper-rs-mcp` (built next to `paper-rs`) relays stdio to the running app. It
-  lists the tools even when the app is closed, and tells the agent to start paper-rs if a
+* **stdio**: `sketch-rs-mcp` (built next to `sketch-rs`) relays stdio to the running app. It
+  lists the tools even when the app is closed, and tells the agent to start Sketch if a
   call can't reach it.
 
 ### Claude Code
 
 ```sh
 # HTTP (the app must be running)
-claude mcp add --transport http --scope user paper-rs http://127.0.0.1:29980/mcp
+claude mcp add --transport http --scope user sketch http://127.0.0.1:29980/mcp
 # or stdio through the bridge
-claude mcp add --scope user paper-rs -- /path/to/paper-rs/target/release/paper-rs-mcp
+claude mcp add --scope user sketch -- /path/to/paper-rs/target/release/sketch-rs-mcp
 ```
 
 ### Codex
 
 ```sh
 # HTTP
-codex mcp add paper-rs --url http://127.0.0.1:29980/mcp
+codex mcp add sketch --url http://127.0.0.1:29980/mcp
 # or stdio
-codex mcp add paper-rs -- /path/to/paper-rs/target/release/paper-rs-mcp
+codex mcp add sketch -- /path/to/paper-rs/target/release/sketch-rs-mcp
 ```
 
 which writes this to `~/.codex/config.toml` (either form works):
 
 ```toml
-[mcp_servers.paper-rs]
+[mcp_servers.sketch]
 url = "http://127.0.0.1:29980/mcp"
-# command = "/path/to/paper-rs/target/release/paper-rs-mcp"
+# command = "/path/to/paper-rs/target/release/sketch-rs-mcp"
 ```
 
-Then ask the agent something like *"In paper-rs, create a 390×844 mobile artboard and design a
+Then ask the agent something like *"In Sketch, create a 390×844 mobile artboard and design a
 sign-in screen"*, or *"draw a flowchart of our deploy process on a new page, hand-drawn
 style"*.
 
 ### Tools
 
-Names and arguments follow Paper's MCP server where paper-rs has an equivalent, so prompts
+Names and arguments follow Paper's MCP server where Sketch has an equivalent, so prompts
 written for Paper work here too.
 
 | Group | Tools |
@@ -148,7 +152,7 @@ written for Paper work here too.
 | Read | `get_basic_info`, `get_selection`, `get_node_info`, `get_children`, `get_tree_summary`, `get_computed_styles`, `get_jsx`, `find_nodes`, `get_fill_image`, `get_font_family_info`, `get_guide` |
 | See | `get_screenshot` (PNG image content of a node or the page), `export` (PNG/SVG/PDF files), `export_combined_pdf` |
 | Write | `create_artboard`, `write_html`, `update_styles`, `set_text_content`, `rename_nodes`, `duplicate_nodes`, `move_nodes`, `delete_nodes`, `finish_working_on_nodes` (saves) |
-| paper-rs extras | `create_shape` (rectangles, ellipses, diamonds, stars, stickies, text, lines, arrows bound to shapes), `select_nodes`, `undo`, `redo` |
+| Sketch extras | `create_shape` (rectangles, ellipses, diamonds, stars, stickies, text, lines, arrows bound to shapes), `select_nodes`, `undo`, `redo` |
 
 `write_html` takes HTML with inline styles: flexbox (`display:flex`, direction, gap, padding,
 alignment, `flex-grow`, wrap) and block stacking map onto auto layout with CSS's stretch rules;
@@ -163,7 +167,7 @@ node); `pageId` lets an agent work on another page without switching the user's 
 
 ```sh
 cargo test                                # ~140 tests: unit, scenario, headless GPU, CLI
-PAPER_RS_REQUIRE_GPU=1 cargo test         # fail (instead of skip) when no GPU adapter exists
+SKETCH_RS_REQUIRE_GPU=1 cargo test         # fail (instead of skip) when no GPU adapter exists
 cargo test --release --test perf -- --nocapture   # 10k-element frame timings
 ```
 
@@ -177,7 +181,7 @@ cargo test --release --test perf -- --nocapture   # 10k-element frame timings
   guides), `tests/excalidraw.rs` (hand-drawn style, arrows, quick-connect, stickies, laser,
   library), `tests/workflow.rs` (layers drag, palette, shortcuts), `tests/io.rs` (export,
   import, clipboard, CLI), `tests/mcp.rs` (every MCP tool on a headless session, then an rmcp
-  client over HTTP and through the `paper-rs-mcp` stdio bridge).
+  client over HTTP and through the `sketch-rs-mcp` stdio bridge).
 * **Headless GPU tests** render through wgpu, assert pixels and write the screenshots below.
   One rasterizes the SVG export with resvg and compares it with the GPU render; one renders
   the PDF export with pdftoppm when installed.
@@ -191,7 +195,7 @@ cargo test --release --test perf -- --nocapture   # 10k-element frame timings
 | 5. Inspector, palette, shortcuts | `milestone5_inspector.png`, `milestone5_palette.png`, `milestone5_shortcuts.png` |
 | 6. Import / export | `milestone6_pdf_page.png` (PDF rasterized by pdftoppm), `milestone6_excalidraw_import.png`, `milestone6_svg_import.png` |
 | 7. MCP server | `milestone7_mcp.png` (a screen written through `write_html`, captured with `get_screenshot`), `milestone7_mcp_live_xvfb.png` (the live app after Claude Code drew into it over the stdio bridge) |
-| paper-rs 0.1 | `m1_*` … `m6_*`, `app_demo.png`, `x11_window_xvfb.png` |
+| Sketch 0.1 | `m1_*` … `m6_*`, `app_demo.png`, `x11_window_xvfb.png` |
 
 ## Using it
 
@@ -235,17 +239,17 @@ select, Shift-click to add, double-click to rename, and use 👁 / 🔒 to hide 
 | ⌘= / ⌘- / ⇧0 | Zoom in / out / 100% | ⇧1 / ⇧2 | Zoom to fit / selection |
 | PageUp / PageDown | Previous / next page | ⌘\\ | Show / hide UI |
 
-## Feature parity: Paper / Figma / Excalidraw vs paper-rs
+## Feature parity: Paper / Figma / Excalidraw vs Sketch
 
 Columns 2–4 say whether each product has the feature (✓) and where the behavior was learned:
 Paper from its desktop shell and public docs (`analysis/PAPER_ARCHITECTURE.md`), Figma from
 public docs (`analysis/FIGMA_NOTES.md`), Excalidraw from its MIT source
-(`analysis/EXCALIDRAW_NOTES.md`). The last column is paper-rs: ✅ done, ⚠️ partial (see
+(`analysis/EXCALIDRAW_NOTES.md`). The last column is Sketch: ✅ done, ⚠️ partial (see
 Known gaps), ⏳ planned in a later milestone, ❌ not planned.
 
-| Feature | Paper | Figma | Excalidraw | paper-rs |
+| Feature | Paper | Figma | Excalidraw | Sketch |
 |---|---|---|---|---|
-| Local projects, recents grid, trash | (cloud dashboard) | ✓ (cloud) | (single file) | ✅ Folders in `~/Documents/paper-rs`, thumbnails, rename/duplicate/trash/restore |
+| Local projects, recents grid, trash | (cloud dashboard) | ✓ (cloud) | (single file) | ✅ Folders in `~/Documents/sketch-rs`, thumbnails, rename/duplicate/trash/restore |
 | Autosave, crash-safe, versioned files | ✓ (cloud) | ✓ (cloud) | ✓ (browser storage) | ✅ 1 s autosave, atomic writes, migration chain (page v1→v3) |
 | Pages, infinite canvas per page | ✓ | ✓ | – | ✅ Per-page history and camera, reorder/duplicate/delete |
 | Frames with clipping | ✓ | ✓ | ✓ | ✅ ⚠️ clip is rectangular (corner radius not clipped) |
@@ -275,7 +279,7 @@ Known gaps), ⏳ planned in a later milestone, ❌ not planned.
 
 ## Known gaps
 
-* **Paper's document model is HTML/CSS.** paper-rs uses geometric nodes with flexbox-like auto
+* **Paper's document model is HTML/CSS.** Sketch uses geometric nodes with flexbox-like auto
   layout on frames; there are no variables, CSS export or code generation.
 * **Rendering approximations.** Frame clipping is a rectangle (scissor), so rounded frames
   don't clip their corners. Group opacity multiplies into children instead of compositing the
@@ -334,7 +338,7 @@ src/library.rs     shared shape library
 src/ui/            home screen, pages, layers, inspector
 src/app.rs         winit application
 src/mcp/           MCP server (rmcp): tools, HTML/CSS mapping, HTTP service
-src/bin/paper-rs-mcp.rs  stdio bridge to the running app
+src/bin/sketch-rs-mcp.rs  stdio bridge to the running app
 analysis/          reverse-engineering findings and design (raw dumps are gitignored)
 docs/screenshots/  headless renders produced by `cargo test`
 site/              the download page (SvelteKit on Vercel); see site/README.md
