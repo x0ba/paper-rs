@@ -22,6 +22,18 @@ Each ported module starts with a comment naming its source.
 Rust crates are pulled from crates.io under their own licenses (see `Cargo.lock`); notable ones
 are wgpu, winit, egui, lyon, ttf-parser, image, i_overlay (MIT), serde and rfd.
 
+The macOS release embeds [Sparkle](https://sparkle-project.org) 2.10.0, unmodified, to install
+updates. Sparkle is MIT-licensed, copyright 2006-2013 Andy Matuschak and others, and bundles code
+under the other licenses in its `LICENSE`. `scripts/release-macos.sh` copies that file into the
+app as `Contents/Resources/Sparkle-LICENSE.txt`.
+
+## macOS release and updates
+
+`scripts/release-macos.sh`, `scripts/fetch-sparkle.sh` and `src/macos/updater.rs` are ported
+from [terminal-rs](https://github.com/michaelshimeles/terminal-rs) and
+[glide](https://github.com/michaelshimeles/glide), other projects by the same author. Each starts
+with a comment naming its source.
+
 ## MIT License (applies to each project listed above, with its copyright line)
 
 ```

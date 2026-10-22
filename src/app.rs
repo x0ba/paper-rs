@@ -209,11 +209,15 @@ impl App {
         true
     }
 
-    /// Autosave when due. Called after every frame and on timer wake-ups.
-    fn tick_autosave(&mut self) {
-        if self.session.autosave_due(&self.ed, Instant::now()) {
+    /// Autosave when due; returns whether it tried. `about_to_wait` calls this rather than
+    /// the frame code, because an occluded window draws no frames and MCP edits made while it
+    /// sits behind other windows still have to reach the disk.
+    fn tick_autosave(&mut self) -> bool {
+        let due = self.session.autosave_due(&self.ed, Instant::now());
+        if due {
             self.save_project(false);
         }
+        due
     }
 
     fn show_home(&mut self) {
@@ -700,7 +704,6 @@ impl App {
             || self.st.home.as_ref().is_some_and(|h| !h.actions.is_empty());
         self.handle_requests();
         self.handle_home_actions();
-        self.tick_autosave();
         if self.st.library.dirty {
             self.st.library.dirty = false;
             if let Err(e) = self.st.library.library.save() {
@@ -754,6 +757,7 @@ impl App {
                     event_loop.exit();
                 }
             }
+            MenuCmd::CheckForUpdates => crate::macos::updater::check_for_updates(),
             MenuCmd::ToggleGrid => self.st.show_grid_off = !self.st.show_grid_off,
             MenuCmd::ToggleHelp => self.st.show_help = !self.st.show_help,
             // Menu key equivalents never reach egui, so while a text field is focused, hand
@@ -1203,17 +1207,27 @@ impl ApplicationHandler<UserEvent> for App {
         }
     }
 
+    fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
+        // Quitting from the menu, the Dock or an update install skips CloseRequested, so save
+        // here instead of losing the edits that are still waiting for the autosave.
+        if self.session.project.is_some() {
+            self.save_project(true);
+        }
+    }
+
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        // Autosave runs off a timer so it also fires while the window sits idle.
-        if self
-            .session
-            .next_deadline()
-            .is_some_and(|d| Instant::now() >= d)
+        // winit runs the first redraw before this, so Sparkle loads once the window is up.
+        // Later calls do nothing.
+        #[cfg(target_os = "macos")]
+        if self.gfx.is_some() {
+            crate::macos::updater::start();
+        }
+        // Starts the autosave clock after any edit, and saves once the timer below wakes the
+        // loop past the deadline, even while the window sits idle.
+        if self.tick_autosave()
+            && let Some(g) = &self.gfx
         {
-            self.tick_autosave();
-            if let Some(g) = &self.gfx {
-                g.window.request_redraw();
-            }
+            g.window.request_redraw();
         }
         let wake = match (self.next_repaint, self.session.next_deadline()) {
             (Some(a), Some(b)) => Some(a.min(b)),

@@ -2,4 +2,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://paper.rasmic.xyz/sitemap.xml
+Sitemap: https://sketch.rasmic.xyz/sitemap.xml

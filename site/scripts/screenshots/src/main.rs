@@ -1,5 +1,6 @@
 //! Builds a sample project with sketch-rs's own MCP tools on a headless session, then renders
-//! the full app UI (Mac layout, light and dark) through sketch-rs's egui + wgpu frame code.
+//! the full app UI (Mac layout, dark) through sketch-rs's egui + wgpu frame code into `og.png`
+//! for the Open Graph card.
 //!
 //!   sketch-rs-site-shots OUT_DIR
 
@@ -18,6 +19,10 @@ const PROJECT: &str = "Trailhead";
 /// Window size in points, and the scale that makes the capture 2160 px wide.
 const WINDOW: [f32; 2] = [1280.0, 800.0];
 const PPP: f32 = 2160.0 / 1280.0;
+/// Points of the window, from its left edge, that the card shows. `scripts/brand/og.html` places
+/// the window at x = 560, at 900 / 1280 px per point, and the card's right edge at x = 1200 crops
+/// the rest.
+const CARD_SHOWS: f32 = (1200.0 - 560.0) / 900.0 * WINDOW[0];
 
 fn call(h: &mut exec::SessionHost, name: &str, args: Value) -> Value {
     match exec::call(h, name, &args) {
@@ -204,15 +209,11 @@ fn build(root: &Path) -> (exec::SessionHost, NodeId) {
     (h, button)
 }
 
-/// `frame::capture`, with the appearance chosen instead of falling back to light.
-fn capture(gpu: &Headless, ed: &mut Editor, st: &mut UiState, dark: bool) -> image::RgbaImage {
+/// `frame::capture` in dark mode, which it can't choose.
+fn capture(gpu: &Headless, ed: &mut Editor, st: &mut UiState) -> image::RgbaImage {
     let ctx = egui::Context::default();
     ui::setup_style(&ctx);
-    ctx.set_theme(if dark {
-        egui::Theme::Dark
-    } else {
-        egui::Theme::Light
-    });
+    ctx.set_theme(egui::Theme::Dark);
     let size = [
         (WINDOW[0] * PPP).round() as u32,
         (WINDOW[1] * PPP).round() as u32,
@@ -237,20 +238,22 @@ fn capture(gpu: &Headless, ed: &mut Editor, st: &mut UiState, dark: bool) -> ima
     let view = tex.create_view(&Default::default());
     for pass in 0..4 {
         let l = frame::layout(&ctx, input(), ed, st);
-        painter.paint(&gpu.device, &gpu.queue, &view, size, &ctx, l, ed, true);
         if pass == 0 {
-            frame_camera(ed);
+            frame_camera(ed, l.canvas);
         }
+        painter.paint(&gpu.device, &gpu.queue, &view, size, &ctx, l, ed, true);
     }
     gpu.read(&tex)
 }
 
-/// Fit the content above the floating tool bar, leaving room for frame labels.
-fn frame_camera(ed: &mut Editor) {
+/// Fit the content into the part of the canvas the card shows, above the floating tool bar and
+/// with room for frame labels.
+fn frame_camera(ed: &mut Editor, canvas: egui::Rect) {
     let b = ed.doc.content_bounds().expect("empty page");
     let b = Rect::new(b.x - 8.0, b.y - 30.0, b.w + 16.0, b.h + 38.0);
-    let view = v2(ed.viewport.x, ed.viewport.y - 56.0);
-    ed.camera.fit(&b, view, 36.0, 1.0);
+    let shown = (CARD_SHOWS - canvas.min.x).min(canvas.width());
+    let view = v2(shown as f64, ed.viewport.y - 56.0);
+    ed.camera.fit(&b, view, 28.0, 1.0);
     ed.revision += 1;
 }
 
@@ -261,27 +264,21 @@ fn main() {
     let (mut h, _button) = build(&root);
     let gpu = Headless::new().expect("no GPU adapter");
     println!("adapter: {}", gpu.adapter_info.name);
-    for dark in [false, true] {
-        let mut st = UiState {
-            native_chrome: true,
-            project_name: PROJECT.into(),
-            save_state: "Saved".into(),
-            ..Default::default()
-        };
-        let img = capture(&gpu, &mut h.ed, &mut st, dark);
-        let path = out.join(if dark {
-            "app-dark.png"
-        } else {
-            "app-light.png"
-        });
-        img.save(&path).unwrap();
-        println!(
-            "wrote {} ({}x{})",
-            path.display(),
-            img.width(),
-            img.height()
-        );
-    }
+    let mut st = UiState {
+        native_chrome: true,
+        project_name: PROJECT.into(),
+        save_state: "Saved".into(),
+        ..Default::default()
+    };
+    let img = capture(&gpu, &mut h.ed, &mut st);
+    let path = out.join("og.png");
+    img.save(&path).unwrap();
+    println!(
+        "wrote {} ({}x{})",
+        path.display(),
+        img.width(),
+        img.height()
+    );
     drop(h);
     let _ = std::fs::remove_dir_all(&root);
 }

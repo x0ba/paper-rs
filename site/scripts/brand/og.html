@@ -12,6 +12,11 @@
 				overflow: hidden;
 			}
 			body {
+				/* The capture fits its board into the part of the window this card shows. Keep CARD_SHOWS
+				   in scripts/screenshots in step with these. */
+				--shot-x: 560px;
+				--shot-y: 92px;
+				--pt: calc(900px / 1280);
 				position: relative;
 				background:
 					radial-gradient(ellipse 560px 420px at 14% 18%, rgba(110, 155, 255, 0.1), transparent 70%),
@@ -24,7 +29,7 @@
 				position: absolute;
 				left: 72px;
 				top: 72px;
-				width: 540px;
+				width: 400px;
 			}
 			.brand {
 				display: flex;
@@ -71,13 +76,34 @@
 			}
 			.shot {
 				position: absolute;
-				left: 640px;
-				top: 92px;
-				width: 880px;
+				left: var(--shot-x);
+				top: var(--shot-y);
+				width: calc(1280 * var(--pt));
 				border-radius: 14px;
 				box-shadow:
 					0 0 0 1px rgba(255, 255, 255, 0.1),
 					0 30px 80px rgba(0, 0, 0, 0.6);
+			}
+			/* macOS draws these over the window, so the capture lacks them. The app insets them 14 pt
+			   into its 40 pt toolbar. */
+			.lights {
+				position: absolute;
+				left: calc(var(--shot-x) + 15 * var(--pt));
+				top: calc(var(--shot-y) + 14 * var(--pt));
+				display: flex;
+				gap: calc(8 * var(--pt));
+			}
+			.lights i {
+				width: calc(12 * var(--pt));
+				height: calc(12 * var(--pt));
+				border-radius: 50%;
+				background: #ff5f57;
+			}
+			.lights i:nth-child(2) {
+				background: #febc2e;
+			}
+			.lights i:nth-child(3) {
+				background: #28c840;
 			}
 		</style>
 	</head>
@@ -95,6 +121,7 @@
 				Free for macOS
 			</div>
 		</div>
-		<img class="shot" src="../screenshots/out/app-dark.png" alt="" />
+		<img class="shot" src="../screenshots/out/og.png" alt="" />
+		<div class="lights"><i></i><i></i><i></i></div>
 	</body>
 </html>

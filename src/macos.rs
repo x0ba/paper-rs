@@ -1,6 +1,8 @@
 //! macOS integration: vibrancy behind the sidebar, traffic lights inset into the toolbar, and a
 //! native menu bar (muda) wired to the editor's actions.
 
+pub mod updater;
+
 use crate::editor::shortcuts::Action;
 use muda::accelerator::{Accelerator, Code, Modifiers as M};
 use muda::{CheckMenuItem, Menu, MenuId, MenuItem, PredefinedMenuItem, Submenu};
@@ -110,6 +112,7 @@ pub fn inset_traffic_lights(window: &Window, x: f64, bar_h: f64) {
 pub enum MenuCmd {
     Run(Action),
     Quit,
+    CheckForUpdates,
     ToggleGrid,
     ToggleHelp,
 }
@@ -242,6 +245,8 @@ pub fn install_menu() -> NativeMenu {
 
     let quit = MenuItem::new("Quit Sketch", true, acc(cmd, Code::KeyQ));
     cmds.insert(quit.id().clone(), MenuCmd::Quit);
+    let updates = MenuItem::new("Check for Updates…", true, None);
+    cmds.insert(updates.id().clone(), MenuCmd::CheckForUpdates);
     let _ = (A::Undo, Run(A::Undo));
     let snapping = CheckMenuItem::new("Snapping", true, true, acc(cmd, Code::Quote));
     cmds.insert(snapping.id().clone(), Run(A::ToggleSnapping));
@@ -256,6 +261,7 @@ pub fn install_menu() -> NativeMenu {
         true,
         &[
             &PredefinedMenuItem::about(Some("About Sketch"), None),
+            &updates,
             &sep(),
             &PredefinedMenuItem::services(None),
             &sep(),

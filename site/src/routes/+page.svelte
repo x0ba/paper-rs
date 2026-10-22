@@ -29,20 +29,12 @@
 	} from '#lib/site.js';
 
 	const url = `${SITE_URL}/`;
-	const MCP_COMMAND = 'claude mcp add --transport http --scope user sketch http://127.0.0.1:29980/mcp';
 
 	const player = new Player();
-	let copied = $state(false);
 
 	function toggleTheme() {
 		theme.toggle();
 		if (player.sound) play('switch');
-	}
-
-	async function copyCommand() {
-		await navigator.clipboard.writeText(MCP_COMMAND);
-		copied = true;
-		setTimeout(() => (copied = false), 1600);
 	}
 
 	const sections = [
@@ -246,32 +238,12 @@
 		</ul>
 	</section>
 
-	<section id="install" class="section split" aria-labelledby="install-title">
+	<section id="install" class="section" aria-labelledby="install-title">
 		<div class="intro" {@attach reveal}>
 			<h2 id="install-title">Install</h2>
 			<p>Free and open source. macOS {MIN_MACOS} or later on {ARCH}. On Linux, build it from source.</p>
 			{@render download()}
 		</div>
-		<ol class="steps" {@attach reveal}>
-			<li>
-				<span class="num">1</span>
-				<div>
-					<h3>Download and open</h3>
-					<p>Open the disk image and drag the app to Applications. It opens to your projects; press ⌘N to start one.</p>
-				</div>
-			</li>
-			<li>
-				<span class="num">2</span>
-				<div>
-					<h3>Connect an agent (optional)</h3>
-					<p>The MCP server starts with the app. Add it to Claude Code, or point any MCP client at the same address.</p>
-					<div class="command">
-						<code>{MCP_COMMAND}</code>
-						<button type="button" class="copy" onclick={copyCommand}>{copied ? 'Copied' : 'Copy'}</button>
-					</div>
-				</div>
-			</li>
-		</ol>
 	</section>
 </main>
 
@@ -641,87 +613,6 @@
 		line-height: 18px;
 	}
 
-	.steps {
-		display: flex;
-		flex-direction: column;
-		gap: 26px;
-		min-width: 0;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.steps li {
-		display: flex;
-		gap: 14px;
-	}
-
-	.steps li > div {
-		display: flex;
-		flex: 1;
-		flex-direction: column;
-		gap: 8px;
-		min-width: 0;
-		padding-top: 2px;
-	}
-
-	.num {
-		display: grid;
-		flex-shrink: 0;
-		place-items: center;
-		width: 24px;
-		height: 24px;
-		border-radius: 50%;
-		background: color-mix(in srgb, var(--fg) 8%, transparent);
-		font-size: 12px;
-		font-weight: 600;
-	}
-
-	.steps h3 {
-		font-size: 14px;
-	}
-
-	.steps p {
-		margin: 0;
-		color: var(--muted);
-		font-size: 14px;
-		line-height: 22px;
-	}
-
-	.command {
-		display: flex;
-		align-items: center;
-		gap: 16px;
-		padding: 12px 14px;
-		border-radius: 10px;
-		background: var(--card);
-		box-shadow: var(--card-edge);
-	}
-
-	code {
-		flex: 1;
-		min-width: 0;
-		overflow-x: auto;
-		color: var(--fg);
-		font: 12px/18px var(--mono);
-		white-space: nowrap;
-		scrollbar-width: none;
-	}
-
-	.copy {
-		padding: 0;
-		border: 0;
-		background: none;
-		color: var(--muted);
-		font: 500 12px var(--sans);
-		cursor: pointer;
-		transition: color 0.15s;
-	}
-
-	.copy:hover {
-		color: var(--fg);
-	}
-
 	.footer {
 		display: flex;
 		align-items: center;
@@ -800,11 +691,6 @@
 
 		.shortcuts {
 			grid-template-columns: minmax(0, 1fr);
-		}
-
-		code {
-			overflow-wrap: anywhere;
-			white-space: normal;
 		}
 
 		.footer {

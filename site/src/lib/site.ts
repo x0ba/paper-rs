@@ -1,8 +1,9 @@
 /** `static/robots.txt` and `static/sitemap.xml` repeat this origin. */
-export const SITE_URL = 'https://paper.rasmic.xyz';
+export const SITE_URL = 'https://sketch.rasmic.xyz';
 export const VERSION = '0.1.0';
-export const REPO_URL = 'https://github.com/michaelshimeles/paper-rs';
-export const DOWNLOAD_URL = `${REPO_URL}/releases/latest/download/sketch-rs-universal.dmg`;
+export const REPO_URL = 'https://github.com/michaelshimeles/sketch';
+/** The universal app that `scripts/release-macos.sh` builds; every release must include it. */
+export const DOWNLOAD_URL = `${REPO_URL}/releases/latest/download/Sketch.dmg`;
 
 /** The release DMG is a universal binary. */
 export const ARCH = 'Apple Silicon and Intel';

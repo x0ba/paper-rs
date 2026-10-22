@@ -59,15 +59,22 @@ cargo build --release
 
 ### macOS
 
+The download is a universal app for Apple Silicon and Intel on macOS 11 or later, signed and
+notarized. It checks for new releases once a day through [Sparkle](https://sparkle-project.org)
+and offers to install them; Sketch › Check for Updates… checks at once. To build it yourself:
+
 ```sh
 xcode-select --install          # command line tools (linker)
 curl https://sh.rustup.rs -sSf | sh
 cargo build --release && ./target/release/sketch-rs --demo
 ```
 
-It uses Metal through wgpu. Shortcuts use ⌘, and trackpad pinch zooms. The macOS target is
-type-checked in CI-style (`cargo check --target aarch64-apple-darwin`) but has not been run on
-Mac hardware yet (see Known gaps).
+It uses Metal through wgpu. Shortcuts use ⌘, and trackpad pinch zooms.
+
+`scripts/release-macos.sh` builds the universal `Sketch.app` with `sketch-rs-mcp` inside, signs
+it with a Developer ID certificate, notarizes it and packages `Sketch.dmg`, plus the zip and
+signed `appcast.xml` that installed copies update from. The one-time credential setup is at the
+top of the script.
 
 ### Linux
 
@@ -107,7 +114,8 @@ the editor like a user edit: one undo step per call, and the window repaints imm
   both can run. Loopback only; requests from browsers (with an `Origin` header) and foreign
   `Host` headers are rejected. `SKETCH_RS_MCP_PORT=NNNN` changes the port; `SKETCH_RS_MCP=0`
   turns the server off.
-* **stdio**: `sketch-rs-mcp` (built next to `sketch-rs`) relays stdio to the running app. It
+* **stdio**: `sketch-rs-mcp` (built next to `sketch-rs`, and in the Mac download at
+  `/Applications/Sketch.app/Contents/MacOS/sketch-rs-mcp`) relays stdio to the running app. It
   lists the tools even when the app is closed, and tells the agent to start Sketch if a
   call can't reach it.
 
@@ -287,9 +295,11 @@ Known gaps), ⏳ planned in a later milestone, ❌ not planned.
   color and luminosity blend as Normal on the canvas (they are exact in SVG export).
 * **Booleans are destructive**: the result is a new vector path with flattened curves.
   Gradients are edited in the inspector only.
-* **Not run on macOS hardware yet.** The macOS build type-checks and uses only portable APIs
-  (Metal via wgpu, winit, rfd), but it has not been launched on a Mac. On Linux, the real
-  window was exercised under Xvfb; the screenshot is `x11_window_xvfb.png`.
+* **macOS testing is thin.** The notarized universal build runs on an M4 Pro Mac under the
+  hardened runtime. The window opens on Metal, Sparkle loads, MCP edits land and autosave
+  writes them. Mouse, trackpad and keyboard input, the menus, Sparkle's update window and the
+  Intel slice haven't been tested on a Mac. On Linux, the real window was exercised under Xvfb;
+  the screenshot is `x11_window_xvfb.png`.
 * **Pen pressure.** winit 0.30 does not expose tablet pressure for pen events that arrive as
   mouse input, which is common with macOS and Wacom tablets. Pressure comes from touch/pen
   `force` when the platform reports it. Otherwise it is simulated from stroke velocity.

@@ -1,7 +1,7 @@
 // Turns the brand SVGs and the app capture into the optimized files in static/.
 //
-//   npm run shots    renders scripts/screenshots/out/app-{light,dark}.png with Sketch
-//   npm run images   this script; the Open Graph card shows app-dark.png
+//   npm run shots    renders scripts/screenshots/out/og.png with Sketch
+//   npm run images   this script; the Open Graph card shows og.png
 
 import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -20,7 +20,7 @@ const chrome =
 
 await mkdir(build, { recursive: true });
 
-const capture = path.join(shots, 'app-dark.png');
+const capture = path.join(shots, 'og.png');
 if (!existsSync(capture)) throw new Error(`missing ${capture}; run npm run shots first`);
 
 const iconSvg = await readFile(at('scripts', 'brand', 'icon.svg'));

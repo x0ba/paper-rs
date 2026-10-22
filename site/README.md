@@ -1,12 +1,20 @@
 # Sketch site
 
-The download page for [Sketch](https://github.com/michaelshimeles/paper-rs): one prerendered
+The download page for [Sketch](https://github.com/michaelshimeles/sketch): one prerendered
 SvelteKit page, built for Vercel. It self-hosts its font and loads no scripts
 from other sites.
 
+The page counts visits with [Vercel Web Analytics](https://vercel.com/docs/analytics), which
+sets no cookies and collects no personal data. `src/routes/+layout.ts` injects it. In production
+the script and its events go to `/_vercel/insights` on the site's own domain; `npm run dev`
+loads Vercel's debug script instead, which logs events to the console and sends nothing. Turn
+Web Analytics on in the Vercel project's Analytics tab, or the script returns 404 and Vercel
+records nothing.
+
 `/download` is a Vercel function that answers with a 302 to
-`https://github.com/michaelshimeles/paper-rs/releases/latest/download/sketch-rs-universal.dmg`,
-so the button works once the newest published Sketch release includes `sketch-rs-universal.dmg`.
+`https://github.com/michaelshimeles/sketch/releases/latest/download/Sketch.dmg`, the
+universal app that `scripts/release-macos.sh` builds, so the button works once the newest
+published Sketch release includes `Sketch.dmg`.
 
 ## Develop
 
@@ -22,7 +30,7 @@ npm run preview   # serves the build, including /download
 
 ## Copy and version
 
-- Headline, features, shortcuts, install steps and footer: `src/routes/+page.svelte`
+- Headline, features, shortcuts, install section and footer: `src/routes/+page.svelte`
 - The demo under the hero: `src/lib/demo/`. `script.ts` holds its timeline, chapters, captions
   and sound cues; `Scene.svelte` lays out the desktop and the app window, and `board.ts` the
   canvas. The page draws it live in HTML and SVG, with hand-drawn shapes from rough.js.
@@ -35,14 +43,14 @@ npm run preview   # serves the build, including /download
 Everything in `static/` comes from two scripts:
 
 ```sh
-npm run shots    # renders scripts/screenshots/out/app-{light,dark}.png with Sketch itself
+npm run shots    # renders scripts/screenshots/out/og.png with Sketch itself
 npm run images   # favicons, the touch icon and og.jpg into static/
 ```
 
 `npm run shots` builds `scripts/screenshots`, a small Rust program that links the Sketch library
 from the root of this repository. It builds the board through Sketch's MCP tools and renders it
-with the app's own renderer in both themes, at 2160 × 1350. The Open Graph card uses the dark
-capture, so rerun it when the app's look changes. Its Cargo target directory defaults to
+with the app's own renderer in dark mode, at 2160 × 1350, framed for the part of the window the
+Open Graph card shows. Rerun it when the app's look changes. Its Cargo target directory defaults to
 `~/.cache/sketch-rs-site-shots`; set `CARGO_TARGET_DIR` to change it.
 
 `npm run images` needs Google Chrome to render the Open Graph card from
