@@ -41,8 +41,10 @@ jobs:
           app="dist/paper-rs.app"
           rm -rf dist
           mkdir -p "${app}/Contents/MacOS"
-          cp target/release/paper-rs "${app}/Contents/MacOS/paper-rs"
-          cp target/release/paper-rs-mcp "${app}/Contents/MacOS/paper-rs-mcp"
+          # Cargo.toml names the binaries sketch-rs and sketch-rs-mcp. The .app
+          # keeps the paper-rs executable names so Info.plist and the release stay put.
+          cp target/release/sketch-rs "${app}/Contents/MacOS/paper-rs"
+          cp target/release/sketch-rs-mcp "${app}/Contents/MacOS/paper-rs-mcp"
           chmod +x "${app}/Contents/MacOS/paper-rs" "${app}/Contents/MacOS/paper-rs-mcp"
           printf 'APPL????' > "${app}/Contents/PkgInfo"
           cat > "${app}/Contents/Info.plist" <<EOF
