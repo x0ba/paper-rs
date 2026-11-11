@@ -1034,17 +1034,26 @@ mod tests {
     }
 
     #[test]
-    fn readback_past_the_default_buffer_limit_returns_the_image() {
-        let Ok(gpu) = Headless::new() else {
-            eprintln!("skipping GPU test: no adapter");
-            return;
+    fn readback_past_the_buffer_limit_returns_the_image() {
+        let width = 64;
+        let height = 4;
+        let row = padded_row_bytes(width) as u64;
+        let buffer = row * 2;
+        let gpu = match Headless::with_caps(buffer, width.max(height)) {
+            Ok(gpu) => gpu,
+            Err(e) if e.contains("no GPU adapter") => {
+                eprintln!("skipping GPU test: {e}");
+                return;
+            }
+            Err(e) => panic!("capped device: {e}"),
         };
         let max = gpu.device.limits().max_buffer_size;
-        let row = padded_row_bytes(16384) as u64;
-        let h = (max / row) as u32 + 1;
-        let tex = gpu.target([16384, h]);
+        assert!(
+            max < row * height as u64,
+            "device buffer {max} still holds the {width}x{height} readback"
+        );
+        let tex = gpu.target([width, height]);
         let img = gpu.read(&tex).expect("readback");
-        assert_eq!(img.dimensions(), (16384, h));
-        assert!(row * h as u64 > max);
+        assert_eq!(img.dimensions(), (width, height));
     }
 }
