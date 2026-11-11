@@ -102,6 +102,5 @@ fn ten_thousand_elements_cache_and_pan_without_rework() {
         e.camera.pan = e.camera.pan + v2(3.0 * i as f64, 1.0);
         draw(&e, &mut cache);
     }
-    drop(draw);
     assert_eq!(r.uploads, 1, "panning reuses the uploaded geometry");
 }
