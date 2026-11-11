@@ -94,6 +94,7 @@ fn ten_thousand_elements_cache_and_pan_without_rework() {
             1.0,
             &f,
             [1.0; 4],
+            [0, 0],
         );
         g.queue.submit([enc.finish()]);
     };

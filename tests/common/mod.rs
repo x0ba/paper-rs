@@ -47,6 +47,7 @@ pub fn render_canvas(g: &Headless, ed: &Editor) -> image::RgbaImage {
         (ed.viewport.y * SCALE) as u32,
     ];
     g.render_frame(&frame, size, SCALE as f32, [1.0; 4])
+        .expect("render")
 }
 
 /// Pixel at a logical (canvas) position.

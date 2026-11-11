@@ -55,7 +55,7 @@ pub fn render(
         }
         None => [0.0; 4],
     };
-    let mut img = gpu.render_frame(&frame, size, 1.0, clear);
+    let mut img = gpu.render_frame(&frame, size, 1.0, clear)?;
     if background.is_none() {
         unpremultiply_edges(&mut img);
     }
@@ -95,8 +95,6 @@ mod tests {
     use crate::model::{Node, NodeId, NodeKind, Paint};
     use crate::render::gpu::Headless;
 
-    /// Red field, a blue vertical bar and a green horizontal bar, so a bad
-    /// tile boundary shows up in either direction.
     fn crossing_board() -> Document {
         let mut ed = Editor::default();
         let mut full = Node::new(NodeId(0), NodeKind::Rect, Rect::new(0.0, 0.0, 4.0, 2.0));
@@ -123,21 +121,30 @@ mod tests {
             eprintln!("skipping GPU test: no adapter");
             return;
         };
-        // 64px textures and a 64KiB buffer. A 400×200 export cannot be one
-        // texture or one readback, which is the scale-100 failure mode.
-        let tiled = Headless::with_caps(65_536, 64).expect("capped device");
-        assert!(
-            tiled.device.limits().max_buffer_size <= 65_536,
-            "device did not keep the buffer cap"
-        );
-        assert!(
-            tiled.device.limits().max_texture_dimension_2d <= 64,
-            "device did not keep the texture cap"
-        );
         let doc = crossing_board();
         let reference = render(&full, &doc, None, 100.0, Some(Color::WHITE)).unwrap();
-        let stitched = render(&tiled, &doc, None, 100.0, Some(Color::WHITE)).unwrap();
         assert_eq!(reference.dimensions(), (400, 200));
+
+        let row = (reference.width() * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT)
+            * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let buffer = row as u64 * 32;
+        let strips = Headless::with_caps(buffer, 1024).expect("capped device");
+        assert!(strips.device.limits().max_buffer_size < row as u64 * reference.height() as u64);
+        assert!(strips.device.limits().max_texture_dimension_2d >= reference.width());
+        let stripped = render(&strips, &doc, None, 100.0, Some(Color::WHITE)).unwrap();
+        assert_eq!(stripped.dimensions(), reference.dimensions());
+        assert_eq!(
+            stripped.as_raw(),
+            reference.as_raw(),
+            "strip export differs from a single render"
+        );
+
+        let edge = crate::render::tess::ATLAS_W;
+        let tile_row = (edge * 4).div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT)
+            * wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+        let tiles = Headless::with_caps(tile_row as u64 * 64, edge).expect("capped device");
+        assert!(tiles.device.limits().max_texture_dimension_2d < reference.width());
+        let stitched = render(&tiles, &doc, None, 100.0, Some(Color::WHITE)).unwrap();
         assert_eq!(stitched.dimensions(), reference.dimensions());
         assert_eq!(
             stitched.as_raw(),

@@ -90,6 +90,7 @@ impl Painter {
                 bg[2] as f64,
                 if self.transparent { 0.0 } else { 1.0 },
             ],
+            [0, 0],
         );
 
         let mut out = layout.output;
@@ -231,5 +232,5 @@ pub fn capture(
         ed,
         !st.show_grid_off,
     );
-    gpu.read(&tex)
+    gpu.read(&tex).expect("readback")
 }
