@@ -11,16 +11,17 @@ pub const MAX_EDGE: f64 = 16384.0;
 
 /// Scale and pixel size for an export of `bounds`.
 /// The longer edge stays within [`MAX_EDGE`].
-fn export_size(bounds: Rect, scale: f64) -> (f64, [u32; 2]) {
+fn export_size(bounds: Rect, scale: f64) -> Result<(f64, [u32; 2]), String> {
+    if scale <= 0.0 {
+        return Err("scale must be positive".to_string());
+    }
     let edge = bounds.w.max(bounds.h).max(1.0);
-    // Do not lift scale with a floor. On a large artboard the cap is already
-    // below 0.001, and a floor draws past MAX_EDGE.
     let scale = scale.min(MAX_EDGE / edge);
     let size = [
         (bounds.w * scale).ceil().clamp(1.0, MAX_EDGE) as u32,
         (bounds.h * scale).ceil().clamp(1.0, MAX_EDGE) as u32,
     ];
-    (scale, size)
+    Ok((scale, size))
 }
 
 /// Render `roots` (or all top-level nodes) at `scale` px per unit.
@@ -35,7 +36,7 @@ pub fn render(
         .map(|r| r.to_vec())
         .unwrap_or_else(|| doc.root.clone());
     let b = export_bounds(doc, &roots).ok_or("nothing to export")?;
-    let (scale, size) = export_size(b, scale);
+    let (scale, size) = export_size(b, scale)?;
     // Tessellate at physical resolution: the camera zoom carries the scale.
     let v = View {
         doc,
@@ -90,11 +91,10 @@ pub fn export(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geom::Rect;
 
     #[test]
     fn ordinary_export_keeps_the_requested_scale() {
-        let (scale, size) = export_size(Rect::new(0.0, 0.0, 400.0, 200.0), 2.0);
+        let (scale, size) = export_size(Rect::new(0.0, 0.0, 400.0, 200.0), 2.0).unwrap();
         assert_eq!(scale, 2.0);
         assert_eq!(size, [800, 400]);
     }
@@ -102,7 +102,11 @@ mod tests {
     #[test]
     fn large_artboard_stays_inside_the_pixel_cap() {
         let bounds = Rect::new(0.0, 0.0, 20_000_000.0, 4_000_000.0);
-        let (scale, size) = export_size(bounds, 2.0);
+        let (scale, size) = export_size(bounds, 2.0).unwrap();
+        assert!(
+            scale < 1e-3,
+            "scale {scale} was raised, which draws past {MAX_EDGE}"
+        );
         assert!(
             bounds.w * scale <= MAX_EDGE + 1.0,
             "scale {scale} draws a {}px edge, past {MAX_EDGE}",
@@ -110,5 +114,24 @@ mod tests {
         );
         assert!(size[0] <= MAX_EDGE as u32 && size[1] <= MAX_EDGE as u32);
         assert!(size[0] >= 1 && size[1] >= 1);
+    }
+
+    #[test]
+    fn nonpositive_scale_is_rejected_and_the_cap_holds() {
+        let board = Rect::new(0.0, 0.0, 400.0, 200.0);
+        assert_eq!(
+            export_size(board, 0.0),
+            Err("scale must be positive".to_string())
+        );
+        assert_eq!(
+            export_size(board, -2.0),
+            Err("scale must be positive".to_string())
+        );
+
+        let bounds = Rect::new(0.0, 0.0, 20_000_000.0, 4_000_000.0);
+        let (scale, size) = export_size(bounds, 2.0).unwrap();
+        assert!(scale < 1e-3);
+        assert!(bounds.w * scale <= MAX_EDGE);
+        assert!(size[0] <= MAX_EDGE as u32 && size[1] <= MAX_EDGE as u32);
     }
 }
