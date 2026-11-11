@@ -731,6 +731,24 @@ pub struct Headless {
 
 impl Headless {
     pub fn new() -> Result<Headless, String> {
+        Self::open(|limits| limits)
+    }
+
+    /// Same device as [`new`](Self::new), with a lower buffer cap and texture edge.
+    /// Tests use this to force an export that does not fit in one readback.
+    #[cfg(test)]
+    pub(crate) fn with_caps(
+        max_buffer_size: u64,
+        max_texture_dimension: u32,
+    ) -> Result<Headless, String> {
+        Self::open(|mut limits| {
+            limits.max_buffer_size = max_buffer_size;
+            limits.max_texture_dimension_2d = max_texture_dimension;
+            limits
+        })
+    }
+
+    fn open(tune: impl FnOnce(wgpu::Limits) -> wgpu::Limits) -> Result<Headless, String> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -743,7 +761,9 @@ impl Headless {
         let adapter_info = adapter.get_info();
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("sketch-rs headless"),
-            required_limits: wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            required_limits: tune(
+                wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            ),
             ..Default::default()
         }))
         .map_err(|e| format!("failed to create device: {e}"))?;

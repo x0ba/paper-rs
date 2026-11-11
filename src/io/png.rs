@@ -91,6 +91,60 @@ pub fn export(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::editor::Editor;
+    use crate::model::{Node, NodeId, NodeKind, Paint};
+    use crate::render::gpu::Headless;
+
+    /// Red field, a blue vertical bar and a green horizontal bar, so a bad
+    /// tile boundary shows up in either direction.
+    fn crossing_board() -> Document {
+        let mut ed = Editor::default();
+        let mut full = Node::new(NodeId(0), NodeKind::Rect, Rect::new(0.0, 0.0, 4.0, 2.0));
+        full.style.fills = vec![Paint::Solid {
+            color: Color::rgb(220, 40, 50),
+        }];
+        ed.add_node(full, None);
+        let mut vertical = Node::new(NodeId(0), NodeKind::Rect, Rect::new(1.6, 0.0, 0.8, 2.0));
+        vertical.style.fills = vec![Paint::Solid {
+            color: Color::rgb(30, 70, 220),
+        }];
+        ed.add_node(vertical, None);
+        let mut horizontal = Node::new(NodeId(0), NodeKind::Rect, Rect::new(0.0, 0.8, 4.0, 0.4));
+        horizontal.style.fills = vec![Paint::Solid {
+            color: Color::rgb(30, 180, 90),
+        }];
+        ed.add_node(horizontal, None);
+        ed.doc
+    }
+
+    #[test]
+    fn scale_100_past_the_device_limit_keeps_size_and_stitches() {
+        let Ok(full) = Headless::new() else {
+            eprintln!("skipping GPU test: no adapter");
+            return;
+        };
+        // 64px textures and a 64KiB buffer. A 400×200 export cannot be one
+        // texture or one readback, which is the scale-100 failure mode.
+        let tiled = Headless::with_caps(65_536, 64).expect("capped device");
+        assert!(
+            tiled.device.limits().max_buffer_size <= 65_536,
+            "device did not keep the buffer cap"
+        );
+        assert!(
+            tiled.device.limits().max_texture_dimension_2d <= 64,
+            "device did not keep the texture cap"
+        );
+        let doc = crossing_board();
+        let reference = render(&full, &doc, None, 100.0, Some(Color::WHITE)).unwrap();
+        let stitched = render(&tiled, &doc, None, 100.0, Some(Color::WHITE)).unwrap();
+        assert_eq!(reference.dimensions(), (400, 200));
+        assert_eq!(stitched.dimensions(), reference.dimensions());
+        assert_eq!(
+            stitched.as_raw(),
+            reference.as_raw(),
+            "tiled export differs from a single render"
+        );
+    }
 
     #[test]
     fn ordinary_export_keeps_the_requested_scale() {
