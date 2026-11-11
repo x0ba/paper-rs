@@ -1016,11 +1016,8 @@ mod tests {
 
     #[test]
     fn tiles_shrink_to_the_texture_and_buffer_caps() {
-        let step = tile_step([400, 200], 64, 65_536).unwrap();
-        assert!(step[0] <= 64 && step[1] <= 64);
-        assert!(step[0] >= 1 && step[1] >= 1);
-        let row = padded_row_bytes(step[0]) as u64;
-        assert!(row * step[1] as u64 <= 65_536);
+        assert_eq!(tile_step([400, 200], 64, 65_536).unwrap(), [64, 64]);
+        assert_eq!(tile_step([65, 3], 128, 256).unwrap(), [64, 1]);
         assert_eq!(
             tile_step([400, 200], 16384, 268_435_456).unwrap(),
             [400, 200]
@@ -1048,12 +1045,33 @@ mod tests {
             Err(e) => panic!("capped device: {e}"),
         };
         let max = gpu.device.limits().max_buffer_size;
-        assert!(
-            max < row * height as u64,
-            "device buffer {max} still holds the {width}x{height} readback"
+        assert_eq!(
+            rows_that_fit(width, max).unwrap(),
+            2,
+            "the second copy must start below the top row"
         );
-        let tex = gpu.target([width, height]);
+        let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("readback-pattern"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: OFFSCREEN_FORMAT,
+            usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let mut src = image::RgbaImage::new(width, height);
+        for y in 0..height {
+            for x in 0..width {
+                src.put_pixel(x, y, image::Rgba([y as u8, x as u8, 0xA5, 255]));
+            }
+        }
+        write_texture(&gpu.queue, &tex, 0, &src);
         let img = gpu.read(&tex).expect("readback");
-        assert_eq!(img.dimensions(), (width, height));
+        assert_eq!(img.into_raw(), src.into_raw());
     }
 }
