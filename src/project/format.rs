@@ -372,4 +372,10 @@ mod tests {
         let old_manifest = m.to_json().replace(PROJECT_FORMAT, OLD_PROJECT_FORMAT);
         assert_eq!(Manifest::from_json(&old_manifest).unwrap(), m);
     }
+
+    #[test]
+    fn page_id_rejects_drive_relative() {
+        assert!(!page_id_ok("C:escaped"));
+        assert!(!page_id_ok(r"C:\x"));
+    }
 }
