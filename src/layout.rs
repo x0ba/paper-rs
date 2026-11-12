@@ -423,20 +423,8 @@ pub fn drop_index(doc: &Document, frame: NodeId, dragged: NodeId, center: V2) ->
     };
     let ma = main_axis(&l);
     let c = if ma == 0 { center.x } else { center.y };
-    let others: Vec<NodeId> = doc
-        .children(Some(frame))
-        .iter()
-        .copied()
-        .filter(|k| *k != dragged)
-        .collect();
-    let flow: Vec<NodeId> = others
-        .iter()
-        .copied()
-        .filter(|k| {
-            doc.get(*k)
-                .is_some_and(|n| n.visible && !n.layout_child.absolute)
-        })
-        .collect();
+    let children = doc.children(Some(frame));
+    let flow = flow_children(doc, frame);
     let mut slot = 0;
     for (i, k) in flow.iter().enumerate() {
         let r = doc.get(*k).unwrap().rect;
@@ -445,13 +433,16 @@ pub fn drop_index(doc: &Document, frame: NodeId, dragged: NodeId, center: V2) ->
             slot = i + 1;
         }
     }
-    match flow.get(slot) {
-        Some(next) => others.iter().position(|k| k == next).unwrap_or(0),
-        None => flow
-            .last()
-            .and_then(|last| others.iter().position(|k| k == last))
-            .map(|i| i + 1)
-            .unwrap_or(0),
+    let insert = match flow.get(slot) {
+        Some(next) => children.iter().position(|k| k == next).unwrap(),
+        None => match flow.last() {
+            Some(last) => children.iter().position(|k| k == last).unwrap() + 1,
+            None => 0,
+        },
+    };
+    match children.iter().position(|k| *k == dragged) {
+        Some(from) if from < insert => insert - 1,
+        _ => insert,
     }
 }
 
