@@ -203,6 +203,9 @@ pub fn page_from_json(s: &str) -> Result<PageData, FormatError> {
         next_id: f.next_id.max(max_id + 1),
     };
     doc.validate().map_err(FormatError::Invalid)?;
+    if !page_id_ok(&f.id) {
+        return Err(FormatError::Invalid("page id is not a file name".into()));
+    }
     Ok(PageData {
         id: f.id,
         name: f.name,
@@ -258,6 +261,15 @@ pub fn now_ms() -> u64 {
 /// Random 16-hex-digit identifier.
 pub fn new_id() -> String {
     format!("{:016x}", fastrand::u64(..))
+}
+
+pub fn page_id_ok(id: &str) -> bool {
+    let mut parts = std::path::Path::new(id).components();
+    let one_normal = matches!(
+        parts.next(),
+        Some(std::path::Component::Normal(name)) if name == id
+    ) && parts.next().is_none();
+    one_normal && !id.contains(['\0', ':'])
 }
 
 #[cfg(test)]
@@ -360,5 +372,11 @@ mod tests {
         let m = Manifest::new("Hello");
         let old_manifest = m.to_json().replace(PROJECT_FORMAT, OLD_PROJECT_FORMAT);
         assert_eq!(Manifest::from_json(&old_manifest).unwrap(), m);
+    }
+
+    #[test]
+    fn page_id_rejects_drive_relative() {
+        assert!(!page_id_ok("C:escaped"));
+        assert!(!page_id_ok(r"C:\x"));
     }
 }

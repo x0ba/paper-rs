@@ -355,6 +355,9 @@ impl Project {
     }
 
     pub fn load_page(&self, id: &str) -> Result<PageData, FormatError> {
+        if !format::page_id_ok(id) {
+            return Err(FormatError::Invalid("page id is not a file name".into()));
+        }
         let mut p = format::page_from_json(&std::fs::read_to_string(self.page_path(id))?)?;
         if let Some(r) = self.manifest.pages.iter().find(|r| r.id == id) {
             // The manifest owns page names (renames touch only the manifest).
@@ -388,6 +391,9 @@ impl Project {
     }
 
     pub fn save_page(&self, page: &PageData) -> Result<(), FormatError> {
+        if !format::page_id_ok(&page.id) {
+            return Err(FormatError::Invalid("page id is not a file name".into()));
+        }
         std::fs::create_dir_all(self.dir.join(PAGES_DIR))?;
         atomic::write(
             &self.page_path(&page.id),
@@ -397,6 +403,9 @@ impl Project {
     }
 
     pub fn delete_page_file(&self, id: &str) {
+        if !format::page_id_ok(id) {
+            return;
+        }
         let _ = std::fs::remove_file(self.page_path(id));
     }
 
@@ -508,5 +517,38 @@ mod tests {
             "an existing new folder wins and the old one is left alone"
         );
         std::fs::remove_dir_all(base).ok();
+    }
+
+    #[test]
+    fn page_id_stays_inside_the_project() {
+        let s = temp_store();
+        let (p, page) = s.create("Plan").unwrap();
+        let outside =
+            std::env::temp_dir().join(format!("sketch-rs-outside-{:016x}.json", fastrand::u64(..)));
+        std::fs::write(&outside, b"keep").unwrap();
+        let stem = outside.with_extension("");
+        let mut bad = page.clone();
+        bad.id = stem.to_str().unwrap().to_string();
+        let saved = p.save_page(&bad);
+        let marker = std::fs::read(&outside).unwrap_or_default();
+        assert!(saved.is_err(), "an absolute page id must not be written");
+        assert_eq!(marker, b"keep");
+
+        bad.id = "../escaped".into();
+        assert!(p.save_page(&bad).is_err());
+        assert!(!p.dir.join("escaped.json").exists());
+
+        p.delete_page_file(stem.to_str().unwrap());
+        assert_eq!(std::fs::read(&outside).unwrap(), b"keep");
+
+        let json = format::page_to_json(&page).replacen(
+            &format!("\"id\": \"{}\"", page.id),
+            "\"id\": \"../nope\"",
+            1,
+        );
+        assert!(format::page_from_json(&json).is_err());
+
+        std::fs::remove_file(&outside).ok();
+        std::fs::remove_dir_all(&s.root).ok();
     }
 }
