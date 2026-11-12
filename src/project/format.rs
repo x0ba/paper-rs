@@ -264,11 +264,12 @@ pub fn new_id() -> String {
 }
 
 pub fn page_id_ok(id: &str) -> bool {
-    !id.is_empty()
-        && id != "."
-        && id != ".."
-        && !id.contains(['/', '\\', '\0'])
-        && !std::path::Path::new(id).is_absolute()
+    let mut parts = std::path::Path::new(id).components();
+    let one_normal = matches!(
+        parts.next(),
+        Some(std::path::Component::Normal(name)) if name == id
+    ) && parts.next().is_none();
+    one_normal && !id.contains(['\0', ':'])
 }
 
 #[cfg(test)]
