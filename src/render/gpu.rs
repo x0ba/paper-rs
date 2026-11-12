@@ -547,19 +547,24 @@ impl CanvasRenderer {
         scale: f32,
         frame: &CanvasFrame,
         clear: [f64; 4],
+        origin: [u32; 2],
     ) {
         let cam = frame.camera;
+        let shift_x = origin[0] as f64 / scale as f64;
+        let shift_y = origin[1] as f64 / scale as f64;
+        let ox = frame.offset.x - shift_x;
+        let oy = frame.offset.y - shift_y;
         let world = Globals {
             size_px: [size[0] as f32, size[1] as f32],
             scale,
             zoom: cam.zoom as f32,
             pan: [cam.pan.x as f32, cam.pan.y as f32],
-            offset: [frame.offset.x as f32, frame.offset.y as f32],
+            offset: [ox as f32, oy as f32],
         };
         let screen = Globals {
             zoom: 1.0,
             pan: [0.0; 2],
-            offset: [0.0; 2],
+            offset: [(-shift_x) as f32, (-shift_y) as f32],
             ..world
         };
         queue.write_buffer(&self.world_globals, 0, bytemuck::bytes_of(&world));
@@ -611,8 +616,8 @@ impl CanvasRenderer {
         let vp = frame.viewport;
         let to_screen = |r: &Rect| {
             Rect::new(
-                (r.x - cam.pan.x) * cam.zoom + frame.offset.x,
-                (r.y - cam.pan.y) * cam.zoom + frame.offset.y,
+                (r.x - cam.pan.x) * cam.zoom + ox,
+                (r.y - cam.pan.y) * cam.zoom + oy,
                 r.w * cam.zoom,
                 r.h * cam.zoom,
             )
@@ -722,6 +727,49 @@ impl CanvasRenderer {
     }
 }
 
+fn padded_row_bytes(width: u32) -> u32 {
+    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    width.saturating_mul(4).div_ceil(align) * align
+}
+
+fn rows_that_fit(width: u32, max_buffer_size: u64) -> Result<u32, String> {
+    let row = padded_row_bytes(width) as u64;
+    if width == 0 || row == 0 {
+        return Err("PNG row is empty".into());
+    }
+    if row > max_buffer_size {
+        return Err(format!(
+            "a PNG row of {width} px is {row} bytes, above the device buffer limit of {max_buffer_size} bytes"
+        ));
+    }
+    Ok((max_buffer_size / row) as u32)
+}
+
+fn tile_step(
+    size: [u32; 2],
+    max_texture_edge: u32,
+    max_buffer_size: u64,
+) -> Result<[u32; 2], String> {
+    if size[0] == 0 || size[1] == 0 {
+        return Err("export size is empty".into());
+    }
+    if max_texture_edge == 0 {
+        return Err("device texture limit is 0".into());
+    }
+    let mut w = size[0].min(max_texture_edge);
+    while w > 0 && padded_row_bytes(w) as u64 > max_buffer_size {
+        w -= 1;
+    }
+    if w == 0 {
+        let row = padded_row_bytes(1);
+        return Err(format!(
+            "a PNG row of 1 px is {row} bytes, above the device buffer limit of {max_buffer_size} bytes"
+        ));
+    }
+    let rows = rows_that_fit(w, max_buffer_size)?;
+    Ok([w, size[1].min(max_texture_edge).min(rows)])
+}
+
 /// A device without a window, for tests, screenshots and PNG export.
 pub struct Headless {
     pub device: wgpu::Device,
@@ -731,6 +779,22 @@ pub struct Headless {
 
 impl Headless {
     pub fn new() -> Result<Headless, String> {
+        Self::open(|limits| limits)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_caps(
+        max_buffer_size: u64,
+        max_texture_dimension: u32,
+    ) -> Result<Headless, String> {
+        Self::open(|mut limits| {
+            limits.max_buffer_size = max_buffer_size;
+            limits.max_texture_dimension_2d = max_texture_dimension;
+            limits
+        })
+    }
+
+    fn open(tune: impl FnOnce(wgpu::Limits) -> wgpu::Limits) -> Result<Headless, String> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -743,7 +807,9 @@ impl Headless {
         let adapter_info = adapter.get_info();
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("sketch-rs headless"),
-            required_limits: wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            required_limits: tune(
+                wgpu::Limits::downlevel_defaults().using_resolution(adapter.limits()),
+            ),
             ..Default::default()
         }))
         .map_err(|e| format!("failed to create device: {e}"))?;
@@ -773,12 +839,38 @@ impl Headless {
     }
 
     /// Copy a texture back to the CPU as RGBA8.
-    pub fn read(&self, tex: &wgpu::Texture) -> image::RgbaImage {
+    pub fn read(&self, tex: &wgpu::Texture) -> Result<image::RgbaImage, String> {
         let (w, h) = (tex.width(), tex.height());
-        let row = (w * 4).div_ceil(256) * 256;
+        let rows = rows_that_fit(w, self.device.limits().max_buffer_size)?;
+        let mut img = image::RgbaImage::new(w, h);
+        let mut y = 0;
+        while y < h {
+            let n = (h - y).min(rows);
+            self.copy_rows(tex, y, n, &mut img)?;
+            y += n;
+        }
+        Ok(img)
+    }
+
+    fn copy_rows(
+        &self,
+        tex: &wgpu::Texture,
+        y: u32,
+        rows: u32,
+        img: &mut image::RgbaImage,
+    ) -> Result<(), String> {
+        let w = tex.width();
+        let row = padded_row_bytes(w);
+        let bytes = row as u64 * rows as u64;
+        let limit = self.device.limits().max_buffer_size;
+        if bytes > limit {
+            return Err(format!(
+                "PNG readback of {bytes} bytes exceeds the device buffer limit of {limit} bytes"
+            ));
+        }
         let buf = self.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("readback"),
-            size: (row * h) as u64,
+            size: bytes,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
@@ -787,7 +879,7 @@ impl Headless {
             wgpu::TexelCopyTextureInfo {
                 texture: tex,
                 mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
+                origin: wgpu::Origin3d { x: 0, y, z: 0 },
                 aspect: wgpu::TextureAspect::All,
             },
             wgpu::TexelCopyBufferInfo {
@@ -795,28 +887,37 @@ impl Headless {
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(row),
-                    rows_per_image: Some(h),
+                    rows_per_image: Some(rows),
                 },
             },
             wgpu::Extent3d {
                 width: w,
-                height: h,
+                height: rows,
                 depth_or_array_layers: 1,
             },
         );
         self.queue.submit([enc.finish()]);
         let slice = buf.slice(..);
         slice.map_async(wgpu::MapMode::Read, |_| {});
-        self.device
-            .poll(wgpu::PollType::wait_indefinitely())
-            .expect("poll");
-        let data = slice.get_mapped_range().expect("mapped readback buffer");
-        let mut img = image::RgbaImage::new(w, h);
-        for y in 0..h {
-            let src = &data[(y * row) as usize..(y * row + w * 4) as usize];
-            img.as_mut()[(y * w * 4) as usize..((y + 1) * w * 4) as usize].copy_from_slice(src);
+        match self.device.poll(wgpu::PollType::wait_indefinitely()) {
+            Err(e) => Err(format!("readback poll failed: {e}")),
+            Ok(_) => {
+                let copied = match slice.get_mapped_range() {
+                    Ok(data) => {
+                        let live = (w * 4) as usize;
+                        for i in 0..rows {
+                            let src = (i * row) as usize;
+                            let dst = ((y + i) * w * 4) as usize;
+                            img.as_mut()[dst..dst + live].copy_from_slice(&data[src..src + live]);
+                        }
+                        Ok(())
+                    }
+                    Err(e) => Err(format!("readback map failed: {e}")),
+                };
+                buf.unmap();
+                copied
+            }
         }
-        img
     }
 
     /// Render a canvas frame into a new image of `size` physical px.
@@ -826,12 +927,47 @@ impl Headless {
         size: [u32; 2],
         scale: f32,
         clear: [f64; 4],
-    ) -> image::RgbaImage {
+    ) -> Result<image::RgbaImage, String> {
+        let limits = self.device.limits();
+        let step = tile_step(
+            size,
+            limits.max_texture_dimension_2d,
+            limits.max_buffer_size,
+        )?;
+        let mut renderer = CanvasRenderer::new(&self.device, OFFSCREEN_FORMAT);
+        if step[0] >= size[0] && step[1] >= size[1] {
+            return self.render_tile(&mut renderer, frame, [0, 0], size, scale, clear);
+        }
+        let mut img = image::RgbaImage::new(size[0], size[1]);
+        let mut y = 0;
+        while y < size[1] {
+            let th = (size[1] - y).min(step[1]);
+            let mut x = 0;
+            while x < size[0] {
+                let tw = (size[0] - x).min(step[0]);
+                let tile =
+                    self.render_tile(&mut renderer, frame, [x, y], [tw, th], scale, clear)?;
+                blit(&mut img, [x, y], &tile);
+                x += tw;
+            }
+            y += th;
+        }
+        Ok(img)
+    }
+
+    fn render_tile(
+        &self,
+        renderer: &mut CanvasRenderer,
+        frame: &CanvasFrame,
+        origin: [u32; 2],
+        size: [u32; 2],
+        scale: f32,
+        clear: [f64; 4],
+    ) -> Result<image::RgbaImage, String> {
         let tex = self.target(size);
         let view = tex.create_view(&Default::default());
-        let mut r = CanvasRenderer::new(&self.device, OFFSCREEN_FORMAT);
         let mut enc = self.device.create_command_encoder(&Default::default());
-        r.render(
+        renderer.render(
             &self.device,
             &self.queue,
             &mut enc,
@@ -840,8 +976,102 @@ impl Headless {
             scale,
             frame,
             clear,
+            origin,
         );
         self.queue.submit([enc.finish()]);
         self.read(&tex)
+    }
+}
+
+fn blit(dst: &mut image::RgbaImage, origin: [u32; 2], src: &image::RgbaImage) {
+    let w = src.width();
+    let live = (w * 4) as usize;
+    for row in 0..src.height() {
+        let s = (row * w * 4) as usize;
+        let d = (((origin[1] + row) * dst.width() + origin[0]) * 4) as usize;
+        dst.as_mut()[d..d + live].copy_from_slice(&src.as_raw()[s..s + live]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn row_padding_matches_the_copy_alignment() {
+        assert_eq!(padded_row_bytes(1), 256);
+        assert_eq!(padded_row_bytes(64), 256);
+        assert_eq!(padded_row_bytes(65), 512);
+        assert_eq!(padded_row_bytes(16384), 65_536);
+    }
+
+    #[test]
+    fn the_default_buffer_holds_4096_rows_of_a_16384_px_image() {
+        let max = 268_435_456;
+        assert_eq!(rows_that_fit(16384, max).unwrap(), 4096);
+        let row = padded_row_bytes(16384) as u64;
+        assert!(row * 4096 <= max);
+        assert!(row * 4097 > max);
+    }
+
+    #[test]
+    fn tiles_shrink_to_the_texture_and_buffer_caps() {
+        assert_eq!(tile_step([400, 200], 64, 65_536).unwrap(), [64, 64]);
+        assert_eq!(tile_step([65, 3], 128, 256).unwrap(), [64, 1]);
+        assert_eq!(
+            tile_step([400, 200], 16384, 268_435_456).unwrap(),
+            [400, 200]
+        );
+    }
+
+    #[test]
+    fn a_row_wider_than_the_buffer_is_an_error() {
+        let err = tile_step([64, 8], 64, 128).unwrap_err();
+        assert!(err.contains("buffer limit"), "{err}");
+    }
+
+    #[test]
+    fn readback_past_the_buffer_limit_returns_the_image() {
+        let width = 64;
+        let height = 4;
+        let row = padded_row_bytes(width) as u64;
+        let buffer = row * 2;
+        let gpu = match Headless::with_caps(buffer, width.max(height)) {
+            Ok(gpu) => gpu,
+            Err(e) if e.contains("no GPU adapter") => {
+                eprintln!("skipping GPU test: {e}");
+                return;
+            }
+            Err(e) => panic!("capped device: {e}"),
+        };
+        let max = gpu.device.limits().max_buffer_size;
+        assert_eq!(
+            rows_that_fit(width, max).unwrap(),
+            2,
+            "the second copy must start below the top row"
+        );
+        let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("readback-pattern"),
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: OFFSCREEN_FORMAT,
+            usage: wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
+        });
+        let mut src = image::RgbaImage::new(width, height);
+        for y in 0..height {
+            for x in 0..width {
+                src.put_pixel(x, y, image::Rgba([y as u8, x as u8, 0xA5, 255]));
+            }
+        }
+        write_texture(&gpu.queue, &tex, 0, &src);
+        let img = gpu.read(&tex).expect("readback");
+        assert_eq!(img.into_raw(), src.into_raw());
     }
 }

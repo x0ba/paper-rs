@@ -243,7 +243,7 @@ fn capture(gpu: &Headless, ed: &mut Editor, st: &mut UiState) -> image::RgbaImag
         }
         painter.paint(&gpu.device, &gpu.queue, &view, size, &ctx, l, ed, true);
     }
-    gpu.read(&tex)
+    gpu.read(&tex).expect("readback")
 }
 
 /// Fit the content into the part of the canvas the card shows, above the floating tool bar and
