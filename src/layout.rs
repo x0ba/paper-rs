@@ -415,7 +415,8 @@ pub fn normalize_group(tx: &mut Tx, id: NodeId) -> bool {
 }
 
 /// Child index at which a dragged child should land in an auto-layout frame, from the
-/// child's center (frame-local) along the main axis.
+/// child's center (frame-local) along the main axis. Hidden and absolute children do not
+/// take a slot. The index is into the child list with the dragged id already removed.
 pub fn drop_index(doc: &Document, frame: NodeId, dragged: NodeId, center: V2) -> usize {
     let Some(l) = doc.get(frame).and_then(|f| f.layout) else {
         return 0;
@@ -428,15 +429,30 @@ pub fn drop_index(doc: &Document, frame: NodeId, dragged: NodeId, center: V2) ->
         .copied()
         .filter(|k| *k != dragged)
         .collect();
-    let mut idx = 0;
-    for (i, k) in others.iter().enumerate() {
+    let flow: Vec<NodeId> = others
+        .iter()
+        .copied()
+        .filter(|k| {
+            doc.get(*k)
+                .is_some_and(|n| n.visible && !n.layout_child.absolute)
+        })
+        .collect();
+    let mut slot = 0;
+    for (i, k) in flow.iter().enumerate() {
         let r = doc.get(*k).unwrap().rect;
         let (p, s) = get(&r, ma);
         if c > p + s * 0.5 {
-            idx = i + 1;
+            slot = i + 1;
         }
     }
-    idx
+    match flow.get(slot) {
+        Some(next) => others.iter().position(|k| k == next).unwrap_or(0),
+        None => flow
+            .last()
+            .and_then(|last| others.iter().position(|k| k == last))
+            .map(|i| i + 1)
+            .unwrap_or(0),
+    }
 }
 
 #[cfg(test)]
@@ -639,5 +655,47 @@ mod tests {
         assert_eq!(r(2), Rect::new(20.0, 10.0, 240.0, 120.0));
         assert_eq!(r(3), Rect::new(120.0, 60.0, 40.0, 20.0));
         assert_eq!(r(4), Rect::new(40.0, 20.0, 80.0, 40.0));
+    }
+
+    #[test]
+    fn drop_index_skips_out_of_flow() {
+        let mut doc = Document::default();
+        let mut rec = Recording::new("t", &doc);
+        let fid;
+        let absolute_b;
+        {
+            let mut tx = Tx::new(&mut doc, &mut rec);
+            fid = tx.alloc_id();
+            let mut frame = Node::new(
+                fid,
+                NodeKind::Frame { clip: true },
+                Rect::new(0.0, 0.0, 400.0, 80.0),
+            );
+            frame.layout = Some(AutoLayout {
+                gap: 0.0,
+                padding: [0.0; 4],
+                ..AutoLayout::default()
+            });
+            tx.insert(frame, None, None);
+            let flow_a = tx.alloc_id();
+            let flow_c = tx.alloc_id();
+            absolute_b = tx.alloc_id();
+            for (id, x, absolute) in [
+                (flow_a, 0.0, false),
+                (flow_c, 100.0, false),
+                (absolute_b, 0.0, true),
+            ] {
+                let mut n = Node::new(id, NodeKind::Rect, Rect::new(x, 0.0, 100.0, 40.0));
+                n.layout_child.absolute = absolute;
+                tx.insert(n, Some(fid), None);
+            }
+        }
+        let dragged = NodeId(99);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 1);
+
+        let hidden_b = doc.nodes.get_mut(&absolute_b).unwrap();
+        hidden_b.layout_child.absolute = false;
+        hidden_b.visible = false;
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 1);
     }
 }
