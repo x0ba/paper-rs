@@ -657,15 +657,12 @@ mod tests {
         assert_eq!(r(4), Rect::new(40.0, 20.0, 80.0, 40.0));
     }
 
-    #[test]
-    fn drop_index_skips_out_of_flow() {
+    fn frame_with(children: &[(f64, bool, bool)]) -> (Document, NodeId) {
         let mut doc = Document::default();
         let mut rec = Recording::new("t", &doc);
-        let fid;
-        let absolute_b;
-        {
+        let fid = {
             let mut tx = Tx::new(&mut doc, &mut rec);
-            fid = tx.alloc_id();
+            let fid = tx.alloc_id();
             let mut frame = Node::new(
                 fid,
                 NodeKind::Frame { clip: true },
@@ -677,25 +674,47 @@ mod tests {
                 ..AutoLayout::default()
             });
             tx.insert(frame, None, None);
-            let flow_a = tx.alloc_id();
-            let flow_c = tx.alloc_id();
-            absolute_b = tx.alloc_id();
-            for (id, x, absolute) in [
-                (flow_a, 0.0, false),
-                (flow_c, 100.0, false),
-                (absolute_b, 0.0, true),
-            ] {
-                let mut n = Node::new(id, NodeKind::Rect, Rect::new(x, 0.0, 100.0, 40.0));
-                n.layout_child.absolute = absolute;
+            for (x, absolute, visible) in children {
+                let id = tx.alloc_id();
+                let mut n = Node::new(id, NodeKind::Rect, Rect::new(*x, 0.0, 100.0, 40.0));
+                n.layout_child.absolute = *absolute;
+                n.visible = *visible;
                 tx.insert(n, Some(fid), None);
             }
-        }
+            fid
+        };
+        (doc, fid)
+    }
+
+    #[test]
+    fn drop_index_skips_out_of_flow() {
         let dragged = NodeId(99);
+        let (doc, fid) = frame_with(&[(0.0, false, true), (100.0, false, true), (0.0, true, true)]);
         assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 1);
 
-        let hidden_b = doc.nodes.get_mut(&absolute_b).unwrap();
-        hidden_b.layout_child.absolute = false;
-        hidden_b.visible = false;
+        let (doc, fid) = frame_with(&[
+            (0.0, false, true),
+            (100.0, false, true),
+            (0.0, false, false),
+        ]);
         assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 1);
+
+        let (doc, fid) = frame_with(&[(0.0, false, true), (0.0, true, true), (100.0, false, true)]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 2);
+
+        let (doc, fid) = frame_with(&[
+            (0.0, false, true),
+            (0.0, false, false),
+            (100.0, false, true),
+        ]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 2);
+
+        let (doc, fid) = frame_with(&[
+            (0.0, false, true),
+            (0.0, true, true),
+            (100.0, false, true),
+            (0.0, true, true),
+        ]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(160.0, 20.0)), 3);
     }
 }
