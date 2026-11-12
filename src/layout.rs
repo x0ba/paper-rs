@@ -416,14 +416,21 @@ pub fn normalize_group(tx: &mut Tx, id: NodeId) -> bool {
 
 /// Child index at which a dragged child should land in an auto-layout frame, from the
 /// child's center (frame-local) along the main axis. Hidden and absolute children do not
-/// take a slot. The index is into the child list with the dragged id already removed.
+/// take a slot. An absolute child of this frame keeps its current index. The index is
+/// into the child list with the dragged id already removed.
 pub fn drop_index(doc: &Document, frame: NodeId, dragged: NodeId, center: V2) -> usize {
     let Some(l) = doc.get(frame).and_then(|f| f.layout) else {
         return 0;
     };
+    let children = doc.children(Some(frame));
+    if doc
+        .get(dragged)
+        .is_some_and(|n| n.parent == Some(frame) && n.layout_child.absolute)
+    {
+        return children.iter().position(|k| *k == dragged).unwrap();
+    }
     let ma = main_axis(&l);
     let c = if ma == 0 { center.x } else { center.y };
-    let children = doc.children(Some(frame));
     let flow = flow_children(doc, frame);
     let mut slot = 0;
     for (i, k) in flow.iter().enumerate() {
