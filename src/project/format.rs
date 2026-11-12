@@ -203,6 +203,9 @@ pub fn page_from_json(s: &str) -> Result<PageData, FormatError> {
         next_id: f.next_id.max(max_id + 1),
     };
     doc.validate().map_err(FormatError::Invalid)?;
+    if !page_id_ok(&f.id) {
+        return Err(FormatError::Invalid("page id is not a file name".into()));
+    }
     Ok(PageData {
         id: f.id,
         name: f.name,
@@ -258,6 +261,14 @@ pub fn now_ms() -> u64 {
 /// Random 16-hex-digit identifier.
 pub fn new_id() -> String {
     format!("{:016x}", fastrand::u64(..))
+}
+
+pub fn page_id_ok(id: &str) -> bool {
+    !id.is_empty()
+        && id != "."
+        && id != ".."
+        && !id.contains(['/', '\\', '\0'])
+        && !std::path::Path::new(id).is_absolute()
 }
 
 #[cfg(test)]
