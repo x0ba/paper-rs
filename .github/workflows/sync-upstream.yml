@@ -92,5 +92,7 @@ jobs:
 
           if [ "${merge_type}" != "none" ]; then
             echo "Dispatching Build macOS on main (GITHUB_TOKEN pushes do not trigger push workflows)."
-            gh workflow run build-macos.yml --ref main
+            # This job does not check out a repo. Without --repo, gh resolves the
+            # repository with git and the dispatch fails after main has moved.
+            gh workflow run build-macos.yml --repo "${GITHUB_REPOSITORY}" --ref main
           fi
