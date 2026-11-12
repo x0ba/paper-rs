@@ -415,28 +415,42 @@ pub fn normalize_group(tx: &mut Tx, id: NodeId) -> bool {
 }
 
 /// Child index at which a dragged child should land in an auto-layout frame, from the
-/// child's center (frame-local) along the main axis.
+/// child's center (frame-local) along the main axis. Hidden and absolute children do not
+/// take a slot. An absolute child of this frame keeps its current index. The index is
+/// into the child list with the dragged id already removed.
 pub fn drop_index(doc: &Document, frame: NodeId, dragged: NodeId, center: V2) -> usize {
     let Some(l) = doc.get(frame).and_then(|f| f.layout) else {
         return 0;
     };
+    let children = doc.children(Some(frame));
+    if doc
+        .get(dragged)
+        .is_some_and(|n| n.parent == Some(frame) && n.layout_child.absolute)
+    {
+        return children.iter().position(|k| *k == dragged).unwrap();
+    }
     let ma = main_axis(&l);
     let c = if ma == 0 { center.x } else { center.y };
-    let others: Vec<NodeId> = doc
-        .children(Some(frame))
-        .iter()
-        .copied()
-        .filter(|k| *k != dragged)
-        .collect();
-    let mut idx = 0;
-    for (i, k) in others.iter().enumerate() {
+    let flow = flow_children(doc, frame);
+    let mut slot = 0;
+    for (i, k) in flow.iter().enumerate() {
         let r = doc.get(*k).unwrap().rect;
         let (p, s) = get(&r, ma);
         if c > p + s * 0.5 {
-            idx = i + 1;
+            slot = i + 1;
         }
     }
-    idx
+    let insert = match flow.get(slot) {
+        Some(next) => children.iter().position(|k| k == next).unwrap(),
+        None => match flow.last() {
+            Some(last) => children.iter().position(|k| k == last).unwrap() + 1,
+            None => 0,
+        },
+    };
+    match children.iter().position(|k| *k == dragged) {
+        Some(from) if from < insert => insert - 1,
+        _ => insert,
+    }
 }
 
 #[cfg(test)]
@@ -639,5 +653,98 @@ mod tests {
         assert_eq!(r(2), Rect::new(20.0, 10.0, 240.0, 120.0));
         assert_eq!(r(3), Rect::new(120.0, 60.0, 40.0, 20.0));
         assert_eq!(r(4), Rect::new(40.0, 20.0, 80.0, 40.0));
+    }
+
+    fn frame_with(children: &[(f64, bool, bool)]) -> (Document, NodeId, Vec<NodeId>) {
+        let mut doc = Document::default();
+        let mut rec = Recording::new("t", &doc);
+        let (fid, ids) = {
+            let mut tx = Tx::new(&mut doc, &mut rec);
+            let fid = tx.alloc_id();
+            let mut frame = Node::new(
+                fid,
+                NodeKind::Frame { clip: true },
+                Rect::new(0.0, 0.0, 400.0, 80.0),
+            );
+            frame.layout = Some(AutoLayout {
+                gap: 0.0,
+                padding: [0.0; 4],
+                ..AutoLayout::default()
+            });
+            tx.insert(frame, None, None);
+            let mut ids = Vec::new();
+            for (x, absolute, visible) in children {
+                let id = tx.alloc_id();
+                let mut n = Node::new(id, NodeKind::Rect, Rect::new(*x, 0.0, 100.0, 40.0));
+                n.layout_child.absolute = *absolute;
+                n.visible = *visible;
+                tx.insert(n, Some(fid), None);
+                ids.push(id);
+            }
+            (fid, ids)
+        };
+        (doc, fid, ids)
+    }
+
+    fn stays_put(doc: &mut Document, fid: NodeId, dragged: NodeId, center: V2, index: usize) {
+        let before = doc.children(Some(fid)).to_vec();
+        assert_eq!(drop_index(doc, fid, dragged, center), index);
+        let mut rec = Recording::new("t", doc);
+        Tx::new(doc, &mut rec).move_to_index(dragged, index);
+        assert_eq!(doc.children(Some(fid)), before.as_slice());
+    }
+
+    #[test]
+    fn drop_index_skips_out_of_flow() {
+        let dragged = NodeId(99);
+        let (doc, fid, _) =
+            frame_with(&[(0.0, false, true), (100.0, false, true), (0.0, true, true)]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 1);
+
+        let (doc, fid, _) = frame_with(&[
+            (0.0, false, true),
+            (100.0, false, true),
+            (0.0, false, false),
+        ]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 1);
+
+        let (doc, fid, _) =
+            frame_with(&[(0.0, false, true), (80.0, true, true), (100.0, false, true)]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 2);
+
+        let (doc, fid, _) = frame_with(&[
+            (0.0, false, true),
+            (80.0, false, false),
+            (100.0, false, true),
+        ]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(60.0, 20.0)), 2);
+
+        let (doc, fid, _) = frame_with(&[
+            (0.0, false, true),
+            (0.0, true, true),
+            (100.0, false, true),
+            (0.0, true, true),
+        ]);
+        assert_eq!(drop_index(&doc, fid, dragged, v2(160.0, 20.0)), 3);
+    }
+
+    #[test]
+    fn drop_index_keeps_an_in_place_drag() {
+        let (mut doc, fid, ids) =
+            frame_with(&[(0.0, false, true), (0.0, true, true), (100.0, false, true)]);
+        stays_put(&mut doc, fid, ids[0], v2(50.0, 20.0), 0);
+
+        let (mut doc, fid, ids) = frame_with(&[(0.0, true, true), (100.0, false, true)]);
+        stays_put(&mut doc, fid, ids[1], v2(150.0, 20.0), 1);
+    }
+
+    #[test]
+    fn drop_index_keeps_an_absolute_child() {
+        let (mut doc, fid, ids) = frame_with(&[(0.0, true, true), (100.0, true, true)]);
+        stays_put(&mut doc, fid, ids[1], v2(150.0, 20.0), 1);
+
+        let (mut doc, fid, ids) =
+            frame_with(&[(0.0, false, true), (100.0, true, true), (200.0, true, true)]);
+        stays_put(&mut doc, fid, ids[2], v2(250.0, 20.0), 2);
     }
 }
