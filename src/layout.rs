@@ -730,4 +730,14 @@ mod tests {
         let (mut doc, fid, ids) = frame_with(&[(0.0, true, true), (100.0, false, true)]);
         stays_put(&mut doc, fid, ids[1], v2(150.0, 20.0), 1);
     }
+
+    #[test]
+    fn drop_index_keeps_an_absolute_child() {
+        let (mut doc, fid, ids) = frame_with(&[(0.0, true, true), (100.0, true, true)]);
+        stays_put(&mut doc, fid, ids[1], v2(150.0, 20.0), 1);
+
+        let (mut doc, fid, ids) =
+            frame_with(&[(0.0, false, true), (100.0, true, true), (200.0, true, true)]);
+        stays_put(&mut doc, fid, ids[2], v2(250.0, 20.0), 2);
+    }
 }
